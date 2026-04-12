@@ -123,9 +123,14 @@ export default function Room({ user }) {
   };
 
   const createPeer = (peerSocketId) => {
+      if (peersRef.current[peerSocketId]) return peersRef.current[peerSocketId];
+
       const pc = new RTCPeerConnection(pcConfig);
       pc._iceQueue = [];
       pc._makingOffer = false;
+
+      // Force instant negotiation and ICE ICE tunnel establishment regardless of camera state!
+      pc.createDataChannel('sync');
 
       pc.onnegotiationneeded = async () => {
           try {
@@ -228,6 +233,14 @@ export default function Room({ user }) {
 
     socket.on('room_update', (data) => {
       setRoomData(data);
+      // Universal Peer Bootstrapper
+      if (data && data.users) {
+          data.users.forEach(u => {
+              if (u.socketId !== socket?.id && !peersRef.current[u.socketId]) {
+                  createPeer(u.socketId);
+              }
+          });
+      }
     });
 
     socket.on('chat_history', (history) => {
@@ -239,7 +252,6 @@ export default function Room({ user }) {
     });
 
     socket.on('user_joined', async ({ socketId }) => {
-        // Just create Peer; local tracks added during creation will safely trigger onnegotiationneeded seamlessly.
         createPeer(socketId);
     });
 
