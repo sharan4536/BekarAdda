@@ -177,7 +177,7 @@ export default function Room({ user }) {
       if (localStreamRef.current) {
           localStreamRef.current.getTracks().forEach(track => {
               // Only add if it doesn't already exist on the connection
-              const existingSender = pc.getSenders().find(s => s.track && s.track.kind === track.kind);
+              const existingSender = pc.getSenders().find(s => s.track === track);
               if (!existingSender) {
                   pc.addTrack(track, localStreamRef.current);
               }
@@ -196,7 +196,7 @@ export default function Room({ user }) {
         Object.keys(peersRef.current).forEach(socketId => {
             const pc = peersRef.current[socketId];
             stream.getTracks().forEach(track => {
-                const existing = pc.getSenders().find(s => s.track && s.track.kind === track.kind);
+                const existing = pc.getSenders().find(s => s.track === track);
                 if (!existing && !isMuted) {
                     pc.addTrack(track, stream);
                 }
@@ -288,6 +288,10 @@ export default function Room({ user }) {
                 if (pc._ignoreOffer) {
                     console.log("Impolite peer dropping concurrent offer collision from", from);
                     return; 
+                }
+
+                if (offerCollision) {
+                    await pc.setLocalDescription({ type: 'rollback' }).catch(e => console.log('Rollback error/unsupported:', e));
                 }
 
                 await pc.setRemoteDescription(signal);
