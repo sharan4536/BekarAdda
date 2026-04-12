@@ -212,6 +212,12 @@ const fetchAssets = async () => {
   };
 
   const emitSound = (sound) => {
+      // Physically play locally in the exact same synchronous frame as the mouse click to dodge Chrome's Context blocks!
+      if(audioRefs.current[sound._id]) {
+          audioRefs.current[sound._id].currentTime = 0;
+          audioRefs.current[sound._id].play().catch(console.error);
+      }
+      
       socket.emit('play_sound', { roomId, user, soundId: sound._id });
       socket.emit('chat_message', { roomId, user, message: `🎵 Played Sound: ${sound.title}` });
   };
