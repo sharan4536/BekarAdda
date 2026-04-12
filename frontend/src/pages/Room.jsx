@@ -88,6 +88,8 @@ export default function Room({ user }) {
   const localStreamRef = useRef(null);
   const [remoteScreenStream, setRemoteScreenStream] = useState(null);
   const [remoteAudioTracks, setRemoteAudioTracks] = useState({});
+  const [debugLog, setDebugLog] = useState("");
+  const appendDebug = (msg) => setDebugLog(prev => prev + msg + "\n");
 
   const messagesEndRef = useRef(null);
   const videoRef = useRef(null);
@@ -127,12 +129,15 @@ export default function Room({ user }) {
 
       pc.onnegotiationneeded = async () => {
           try {
+              appendDebug(`[NEG] Start local description generation...`);
               pc._makingOffer = true;
               await pc.setLocalDescription();
+              appendDebug(`[NEG] Sending offer: ${pc.localDescription.type}`);
               if (socket) {
                   socket.emit('webrtc_signal', { to: peerSocketId, signal: pc.localDescription });
               }
           } catch (err) {
+              appendDebug(`[NEG FAIL] ${err.message}`);
               console.error(`[Negotiation] Error for ${peerSocketId}:`, err);
           } finally {
               pc._makingOffer = false;
@@ -146,11 +151,11 @@ export default function Room({ user }) {
       };
 
       pc.oniceconnectionstatechange = () => {
-          console.log(`[ICE] Peer ${peerSocketId} state:`, pc.iceConnectionState);
+          appendDebug(`[ICE] state: ${pc.iceConnectionState}`);
       };
 
       pc.ontrack = (event) => {
-          console.log(`[ONTRACK] Received ${event.track.kind} from ${peerSocketId}`, event.streams);
+          appendDebug(`[ONTRACK] Kind: ${event.track.kind}`);
           if (event.track.kind === 'video') {
               if (event.streams && event.streams[0]) {
                   setRemoteScreenStream(event.streams[0]);
@@ -282,25 +287,35 @@ export default function Room({ user }) {
             const polite = socket?.id > from;
 
             if (signal.type === 'offer') {
+                appendDebug(`[SIG] Rcv offer (polite=${polite})`);
                 const offerCollision = pc._makingOffer || pc.signalingState !== 'stable';
                 
                 pc._ignoreOffer = !polite && offerCollision;
                 if (pc._ignoreOffer) {
-                    console.log("Impolite peer dropping concurrent offer collision from", from);
+                    appendDebug(`[SIG] Ignoring offer due to collision.`);
                     return; 
                 }
 
                 if (offerCollision) {
-                    await pc.setLocalDescription({ type: 'rollback' }).catch(e => console.log('Rollback error/unsupported:', e));
+                    appendDebug(`[SIG] Resolving collision with rollback.`);
+                    await pc.setLocalDescription({ type: 'rollback' }).catch(e => appendDebug(`[ROLLBACK FAIL] ${e.message}`));
                 }
 
-                await pc.setRemoteDescription(signal);
-                await pc.setLocalDescription();
-                socket.emit('webrtc_signal', { to: from, signal: pc.localDescription });
-                await flushIce();
+                try {
+                    await pc.setRemoteDescription(signal);
+                    appendDebug(`[SIG] Applied remote offer`);
+                    await pc.setLocalDescription();
+                    appendDebug(`[SIG] Sending answer`);
+                    socket.emit('webrtc_signal', { to: from, signal: pc.localDescription });
+                    await flushIce();
+                } catch(e) { appendDebug(`[SRD ERROR] ${e.message}`); }
             } else if (signal.type === 'answer') {
-                await pc.setRemoteDescription(signal);
-                await flushIce();
+                appendDebug(`[SIG] Rcv answer`);
+                try {
+                    await pc.setRemoteDescription(signal);
+                    appendDebug(`[SIG] Applied remote answer`);
+                    await flushIce();
+                } catch(e) { appendDebug(`[SRD ERROR] ${e.message}`); }
             } else if (signal.type === 'candidate' && signal.candidate) {
                 const iceCand = new RTCIceCandidate(signal.candidate);
                 if (pc.remoteDescription && pc.remoteDescription.type) {
@@ -486,6 +501,7 @@ export default function Room({ user }) {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 relative">
+        <pre className="absolute top-16 right-4 z-[999] pointer-events-none text-[10px] sm:text-xs bg-black/80 text-lime-400 p-2 max-w-[250px] overflow-y-auto max-h-40 rounded border border-lime-800 break-words whitespace-pre-wrap">{debugLog}</pre>
         
         {/* Top Navbar */}
         <header className="h-16 bg-slate-900 border-b border-white/5 flex items-center justify-between px-6 z-20 shadow-sm relative">
