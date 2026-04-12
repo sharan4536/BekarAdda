@@ -13,7 +13,7 @@ mongoose.connect(mongoUri)
 
 const User = require('./models/User');
 const Prediction = require('./models/Prediction');
-const Dare = require('./models/Dare');
+
 const MemeContent = require('./models/MemeContent');
 const AppAsset = require('./models/AppAsset');
 const AdminConfig = require('./models/AdminConfig');
@@ -305,14 +305,7 @@ io.on('connection', (socket) => {
       io.to(roomId).emit('play_meme', memeData);
   });
 
-  // Dares
-  socket.on('create_dare', ({ roomId, dare }) => {
-      if(rooms[roomId]) {
-          const newDare = { id: Math.random().toString(36).substr(2,9), status: 'pending', ...dare };
-          rooms[roomId].dares.push(newDare);
-          io.to(roomId).emit('dare_created', newDare);
-      }
-  });
+
 
   socket.on('cricket_prediction', ({ roomId, userId, roundId, predictedRuns, predictedWicket }) => {
       if(rooms[roomId]) {
@@ -373,26 +366,7 @@ io.on('connection', (socket) => {
                  });
                  io.to(roomId).emit('leaderboard_update', Object.values(room.leaderboard).sort((a,b) => b.points - a.points));
                  
-                 // Process Dares manually
-                 if (room.dares) {
-                    room.dares.forEach(d => {
-                        if (d.status === 'pending') {
-                            let cond = (d.condition || '').toLowerCase();
-                            let met = false;
-                            if (cond === 'wicket' && isWicket) met = true;
-                            else if (cond === 'six' && runs === 6) met = true;
-                            else if (cond === 'four' && runs === 4) met = true;
-                            else if (cond === 'dot' && runs === 0 && !isWicket) met = true;
-
-                            if (met) {
-                                d.status = 'completed';
-                                io.to(roomId).emit('dare_result', { dareId: d.id, success: true, dare: d });
-                            } else {
-                                d.status = 'missed';
-                            }
-                        }
-                    });
-                 }
+                 // Dares Engine entirely deprecated
 
                  // Emit to clients exactly what was submitted to trigger visual Confetti correctly via exact string!
                  io.to(roomId).emit('cricket_event', {

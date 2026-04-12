@@ -475,18 +475,8 @@ export default function Room({ user }) {
       
       {/* Left Sidebar (Participants) */}
       <div className="w-64 bg-slate-900 border-r border-white/5 flex flex-col z-20 shrink-0 hidden md:flex">
-          
-          {/* Custom Branding Header */}
-          <div className="p-5 border-b border-indigo-500/20 bg-black/40 text-center flex flex-col items-center gap-1 shadow-[inset_0_-10px_20px_rgba(0,0,0,0.5)]">
-              <span className="text-2xl filter drop-shadow-[0_0_10px_rgba(138,43,226,0.8)] mb-1">⚡</span>
-              <h1 className="text-2xl font-black tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-indigo-400 to-fuchsia-500 filter drop-shadow-[0_0_10px_rgba(138,43,226,0.5)]">
-                  Bekargallu
-              </h1>
-              <p className="text-[0.6rem] uppercase font-bold text-indigo-300/60 tracking-widest mt-1">A place where people gather for fun timepass</p>
-          </div>
-
-          <div className="p-4 border-b border-white/5 flex items-center justify-between bg-black/20">
-              <h3 className="font-bold text-[0.65rem] text-slate-400 uppercase tracking-[0.2em]">Participants ({roomData.users.length})</h3>
+          <div className="p-4 border-b border-white/5 flex items-center justify-between">
+              <h3 className="font-bold text-xs text-slate-400 uppercase tracking-widest">Participants ({roomData.users.length})</h3>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
                {roomData.users.map(u => (

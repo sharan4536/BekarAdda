@@ -384,16 +384,8 @@ const fetchAssets = async () => {
             )}
         </div>
 
-        {/* BOTTOM LEVEL: Prediction, Dares, Memes */}
+        {/* BOTTOM LEVEL: Prediction, Memes */}
         <div className="flex flex-col items-center justify-end pointer-events-auto mt-auto gap-4">
-            
-            {/* Dare Trigger Result Flash */}
-            {dareResult && (
-                <div className="bg-red-600 border border-red-400 text-white px-6 py-3 rounded-full font-black tracking-wide shadow-[0_0_30px_rgba(220,38,38,0.6)] animate-in slide-in-from-bottom flex items-center gap-2 text-xl">
-                    <Target size={24} /> {dareResult}
-                </div>
-            )}
-
             {/* ACTIVE PREDICTION UI */}
             {predictionWindow && !myPrediction && (
                 <div className="bg-slate-900/95 backdrop-blur-xl border-t-2 border-indigo-500 p-8 rounded-3xl shadow-2xl text-center max-w-lg w-full animate-in slide-in-from-bottom-8 fade-in duration-300">
