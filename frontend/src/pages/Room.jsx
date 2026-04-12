@@ -138,12 +138,12 @@ export default function Room({ user }) {
       pc.createDataChannel('sync');
 
       pc.onnegotiationneeded = async () => {
-          // Dodge Safari Rollback Crashes by assigning absolute topology: ONLY the Host sends initial Offers!
-          if (roomDataRef.current?.host !== socket?.id) return;
+          const polite = socket?.id > peerSocketId;
           try {
-              appendDebug(`[NEG] Generating Master Offer`);
+              appendDebug(`[NEG] Generating Offer`);
               pc._makingOffer = true;
               const offer = await pc.createOffer();
+              if (pc.signalingState !== "stable" && !polite) return;
               await pc.setLocalDescription(offer);
               if (socket) {
                   socket.emit('offer', { to: peerSocketId, offer: pc.localDescription });
@@ -295,8 +295,21 @@ export default function Room({ user }) {
         console.log("Received Offer from", from);
         let pc = peersRef.current[from];
         if (!pc) pc = createPeer(from);
+
+        const polite = socket?.id > from;
+        const offerCollision = pc._makingOffer || pc.signalingState !== 'stable';
+        
+        if (offerCollision && !polite) return;
+        
         try {
-            await pc.setRemoteDescription(new RTCSessionDescription(offer));
+            if (offerCollision) {
+                await Promise.all([
+                    pc.setLocalDescription({ type: 'rollback' }),
+                    pc.setRemoteDescription(new RTCSessionDescription(offer))
+                ]);
+            } else {
+                await pc.setRemoteDescription(new RTCSessionDescription(offer));
+            }
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
             socket.emit('answer', { to: from, answer: pc.localDescription });
