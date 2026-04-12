@@ -256,8 +256,8 @@ const fetchAssets = async () => {
                     className="absolute animate-in slide-in-from-bottom fade-out duration-[3000ms] pointer-events-none"
                     style={{ 
                         left: `${burst.left}%`, 
-                        bottom: '20%',
-                        transform: `scale(${burst.scale}) translateY(-60vh)`,
+                        bottom: '10%',
+                        transform: `scale(${burst.scale}) translateY(-35vh)`,
                         transition: 'transform 3s ease-out',
                     }}
                  >
