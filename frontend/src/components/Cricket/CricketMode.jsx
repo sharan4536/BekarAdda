@@ -30,8 +30,8 @@ export default function CricketMode({ socket, roomId, user, roomData }) {
   const [language, setLanguage] = useState('General');
   const [showMenu, setShowMenu] = useState(false);
   const audioRefs = useRef({});
-
-  const fetchAssets = async () => {
+  
+const fetchAssets = async () => {
       try {
           const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
           const res = await fetch(`${API_BASE}/api/admin/assets`);
@@ -41,6 +41,7 @@ export default function CricketMode({ socket, roomId, user, roomData }) {
           if (firstCat && language === 'General') setLanguage(firstCat);
       } catch(e) {}
   };
+
 
   useEffect(() => {
      fetchAssets();
