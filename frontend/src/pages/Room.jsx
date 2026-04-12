@@ -125,9 +125,6 @@ export default function Room({ user }) {
       pc._iceQueue = [];
       pc._makingOffer = false;
 
-      pc.addTransceiver('audio', { direction: 'recvonly' });
-      pc.addTransceiver('video', { direction: 'recvonly' });
-
       pc.onnegotiationneeded = async () => {
           try {
               pc._makingOffer = true;
@@ -350,8 +347,8 @@ export default function Room({ user }) {
 
          Object.keys(peersRef.current).forEach((socketId) => {
              const pc = peersRef.current[socketId];
-             // True dynamic renegotiation: remove track entirely
-             const senders = pc.getSenders().filter(s => s.track && (s.track.kind === 'video' || s.track.kind === 'audio'));
+             // Remove specifically the screen share tracks, NOT the microphone!
+             const senders = pc.getSenders().filter(s => s.track && localStreamRef.current.getTracks().includes(s.track));
              senders.forEach(sender => pc.removeTrack(sender));
          });
      }
@@ -365,20 +362,11 @@ export default function Room({ user }) {
          setLocalStream(stream);
          localStreamRef.current = stream;
 
-         // Route tracks via existing transceivers to avoid late-negotiation failures
+         // Add screen tracks directly. Perfect Negotiation handles SDP renegotiation automatically.
          Object.keys(peersRef.current).forEach((socketId) => {
              const pc = peersRef.current[socketId];
              stream.getTracks().forEach(track => {
-                 const transceivers = pc.getTransceivers();
-                 const transceiver = transceivers.find(t => t.receiver.track.kind === track.kind);
-                 if (transceiver) {
-                     transceiver.direction = 'sendrecv';
-                     if(transceiver.sender) {
-                         transceiver.sender.replaceTrack(track).catch(e => console.error("ReplaceTrack failed:", e));
-                     }
-                 } else {
-                     pc.addTrack(track, stream);
-                 }
+                 pc.addTrack(track, stream);
              });
          });
      } catch (err) {
