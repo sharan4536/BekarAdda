@@ -14,7 +14,7 @@ const RemoteAudio = ({ stream }) => {
             audioRef.current.srcObject = stream;
         }
     }, [stream]);
-    return <audio ref={audioRef} autoPlay />;
+    return <audio ref={audioRef} autoPlay playsInline />;
 };
 
 const AvatarNode = ({ u, stream, isMe, isMuted }) => {
@@ -133,17 +133,17 @@ export default function Room({ user }) {
       pc.createDataChannel('sync');
 
       pc.onnegotiationneeded = async () => {
+          // Dodge Safari Rollback Crashes by assigning absolute topology: ONLY the Host sends initial Offers!
+          if (roomDataRef.current?.host !== socket?.id) return;
           try {
-              appendDebug(`[NEG] Start local description generation...`);
+              appendDebug(`[NEG] Generating Master Offer`);
               pc._makingOffer = true;
               await pc.setLocalDescription();
-              appendDebug(`[NEG] Sending offer: ${pc.localDescription.type}`);
               if (socket) {
                   socket.emit('webrtc_signal', { to: peerSocketId, signal: pc.localDescription });
               }
           } catch (err) {
               appendDebug(`[NEG FAIL] ${err.message}`);
-              console.error(`[Negotiation] Error for ${peerSocketId}:`, err);
           } finally {
               pc._makingOffer = false;
           }
@@ -233,8 +233,8 @@ export default function Room({ user }) {
 
     socket.on('room_update', (data) => {
       setRoomData(data);
-      // Universal Peer Bootstrapper
-      if (data && data.users) {
+      // Universal Peer Bootstrapper: Host strictly constructs architecture topology to prevent double-offer collisions!
+      if (data && data.users && data.host === socket?.id) {
           data.users.forEach(u => {
               if (u.socketId !== socket?.id && !peersRef.current[u.socketId]) {
                   createPeer(u.socketId);
@@ -299,25 +299,12 @@ export default function Room({ user }) {
             const polite = socket?.id > from;
 
             if (signal.type === 'offer') {
-                appendDebug(`[SIG] Rcv offer (polite=${polite})`);
-                const offerCollision = pc._makingOffer || pc.signalingState !== 'stable';
-                
-                pc._ignoreOffer = !polite && offerCollision;
-                if (pc._ignoreOffer) {
-                    appendDebug(`[SIG] Ignoring offer due to collision.`);
-                    return; 
-                }
-
-                if (offerCollision) {
-                    appendDebug(`[SIG] Resolving collision with rollback.`);
-                    await pc.setLocalDescription({ type: 'rollback' }).catch(e => appendDebug(`[ROLLBACK FAIL] ${e.message}`));
-                }
-
+                appendDebug(`[SIG] Rcv offer, generating answer`);
                 try {
                     await pc.setRemoteDescription(signal);
-                    appendDebug(`[SIG] Applied remote offer`);
-                    await pc.setLocalDescription();
-                    appendDebug(`[SIG] Sending answer`);
+                    appendDebug(`[SIG] Remote accepted`);
+                    const answer = await pc.createAnswer();
+                    await pc.setLocalDescription(answer);
                     socket.emit('webrtc_signal', { to: from, signal: pc.localDescription });
                     await flushIce();
                 } catch(e) { appendDebug(`[SRD ERROR] ${e.message}`); }
