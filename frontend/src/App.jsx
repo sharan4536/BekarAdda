@@ -6,7 +6,7 @@ import AuthPage from './pages/AuthPage';
 import Header from './components/Header';
 import AdminConsole from './pages/AdminConsole';
 
-function StandardLayout({ user }) {
+function StandardLayout({ user, setUser }) {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
   const isRoom = location.pathname.startsWith('/room');
@@ -16,7 +16,7 @@ function StandardLayout({ user }) {
          {!isAdmin && !isRoom && <Header user={user} setUser={setUser} />}
          <main className="flex-grow flex flex-col relative w-full h-full" style={{ paddingTop: isAdmin || isRoom ? '0' : '65px' }}>
             <Routes>
-              <Route path="/" element={<AuthPage onLogin={setUser => null /* Lifted to App wrapper normally */} />} />
+              <Route path="/" element={<AuthPage onLogin={setUser} />} />
               <Route path="/modes" element={<ModeSelection user={user} />} />
               <Route path="/room/:id" element={<Room user={user} />} />
               <Route path="/admin" element={<AdminConsole />} />
@@ -27,7 +27,7 @@ function StandardLayout({ user }) {
 }
 
 export default function App() {
-  const [user, setUser] = useState(null); // Local state for simplicity in MVP
+  const [user, setUser] = useState(null);
   const [loadingOverlay, setLoadingOverlay] = useState(true);
 
   React.useEffect(() => {
@@ -61,21 +61,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
-       <Routes>
-           <Route path="/admin" element={<AdminConsole />} />
-           <Route path="*" element={
-               <div className="flex flex-col min-h-screen">
-                 <Header user={user} setUser={setUser} />
-                 <main className="flex-grow flex flex-col relative w-full h-full">
-                   <Routes>
-                     <Route path="/" element={<AuthPage onLogin={setUser} />} />
-                     <Route path="/modes" element={<ModeSelection user={user} />} />
-                     <Route path="/room/:id" element={<Room user={user} />} />
-                   </Routes>
-                 </main>
-               </div>
-           } />
-       </Routes>
+       <StandardLayout user={user} setUser={setUser} />
     </BrowserRouter>
   );
 }
