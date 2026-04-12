@@ -83,7 +83,7 @@ export default function AdminConsole() {
       try {
           let targetUrl = formData.url;
           
-          if ((activeTab === 'gif' || activeTab === 'sound') && !targetUrl.match(/\.(gif|mp3|wav|ogg|m4a)$/i)) {
+          if ((activeTab === 'gif' || activeTab === 'sound') && !targetUrl.match(/\.(gif|mp3|wav|ogg|m4a)$/i) && !targetUrl.startsWith('data:')) {
                const resolveRes = await fetch(`${API_BASE}/resolve-media?url=${encodeURIComponent(targetUrl)}&type=${activeTab}`);
                const resolveData = await resolveRes.json();
                if(resolveData.url) targetUrl = resolveData.url;
