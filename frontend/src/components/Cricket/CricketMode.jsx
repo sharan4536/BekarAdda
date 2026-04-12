@@ -6,7 +6,9 @@ const MEMES = [
   { id: 1, label: 'Airhorn', emoji: '🎺', url: 'https://www.myinstants.com/media/sounds/mlg-airhorn.mp3' },
   { id: 2, label: 'Sad Trombone', emoji: '📉', url: 'https://www.myinstants.com/media/sounds/sad-trombone.mp3' },
   { id: 3, label: 'Bruh', emoji: '😂', url: 'https://www.myinstants.com/media/sounds/movie_1.mp3' },
-  { id: 4, label: 'Applause', emoji: '👏', url: 'https://www.myinstants.com/media/sounds/golfclap.mp3' }
+  { id: 4, label: 'Applause', emoji: '👏', url: 'https://www.myinstants.com/media/sounds/golfclap.mp3' },
+  { id: 5, label: 'Fahh', emoji: '😤', url: 'https://www.myinstants.com/media/sounds/epic.mp3' },
+  { id: 6, label: 'Flash', emoji: '⚡', url: 'https://www.myinstants.com/media/sounds/flash.mp3' }
 ];
 
 export default function CricketMode({ socket, roomId, user, roomData }) {
@@ -17,12 +19,7 @@ export default function CricketMode({ socket, roomId, user, roomData }) {
   const [lastEvent, setLastEvent] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
   
-  // Dares
-  const [dareTargetId, setDareTargetId] = useState('');
-  const [dareCondition, setDareCondition] = useState('wicket');
-  const [activeDares, setActiveDares] = useState([]);
-  const [dareResult, setDareResult] = useState(null);
-
+// No dares state needed
   // Reaction Engine states
   const [assets, setAssets] = useState([]);
   const [bursts, setBursts] = useState([]);
@@ -149,17 +146,6 @@ const fetchAssets = async () => {
         } catch(e) {}
     });
 
-    socket.on('dare_created', (dare) => {
-        setActiveDares(prev => [...prev, dare]);
-    });
-
-    socket.on('dare_result', ({ dareId, success, dare }) => {
-        if(success && (dare.targetUserId === user.id || dare.creatorId === user.id)) {
-            setDareResult(`Dare Executed! Triggered on ${dare.targetUserId}`);
-            setTimeout(() => setDareResult(null), 5000);
-        }
-        setActiveDares(prev => prev.filter(d => d.id !== dareId));
-    });
 
     return () => {
         socket.off('cricket_event');
@@ -169,8 +155,7 @@ const fetchAssets = async () => {
         socket.off('movie_reaction');
         socket.off('play_sound');
         socket.off('play_meme');
-        socket.off('dare_created');
-        socket.off('dare_result');
+
     };
   }, [socket, user.id]);
 
@@ -226,24 +211,6 @@ const fetchAssets = async () => {
       socket.emit('trigger_meme', { roomId, memeData: { url } });
   };
 
-  const createDare = (e) => {
-      e.preventDefault();
-      if(!dareTargetId) return;
-      const tUser = roomData.users.find(u => u.id === dareTargetId);
-      socket.emit('create_dare', {
-          roomId,
-          dare: {
-              creatorId: user.id,
-              targetUserId: dareTargetId,
-              condition: dareCondition,
-              description: `A dare from ${user.username} to ${tUser?.username}`
-          }
-      });
-      setDareTargetId('');
-  };
-
-  // Filter users to not include self for Dares
-  const dareTargets = roomData?.users.filter(u => u.id !== user.id) || [];
 
   return (
     <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-6 z-30">
@@ -487,37 +454,7 @@ const fetchAssets = async () => {
                         ))}
                     </div>
 
-                    {/* DARE ENGINE ENHANCED LAYOUT */}
-                    <div className="flex items-center gap-2 pl-2 pr-2">
-                        <MessageSquareCode className="text-slate-400 mr-2" size={20} />
-                        <form onSubmit={createDare} className="flex gap-2">
-                            <select 
-                                value={dareTargetId} 
-                                onChange={e => setDareTargetId(e.target.value)}
-                                className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500 text-slate-200"
-                            >
-                                <option value="" disabled>Dare target...</option>
-                                {dareTargets.map(u => (
-                                    <option key={u.id} value={u.id}>{u.username}</option>
-                                ))}
-                            </select>
-                            
-                            <select 
-                                value={dareCondition} 
-                                onChange={e => setDareCondition(e.target.value)}
-                                className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500 text-slate-200"
-                            >
-                                <option value="wicket">If Wicket</option>
-                                <option value="six">If Six</option>
-                                <option value="four">If Four</option>
-                                <option value="dot">If Dot Ball</option>
-                            </select>
-                            
-                            <button type="submit" disabled={!dareTargetId} className="bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:hover:bg-red-600 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors">
-                                Send Dare
-                            </button>
-                        </form>
-                    </div>
+
 
                 </div>
             )}
