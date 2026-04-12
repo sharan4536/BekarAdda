@@ -38,8 +38,12 @@ const fetchAssets = async () => {
           const data = await res.json();
           setAssets(data);
           const firstCat = data.find(d => d.type === 'emoji' || d.type === 'gif')?.category;
-          if (firstCat && language === 'General') setLanguage(firstCat);
-      } catch(e) {}
+          if (firstCat && language === 'General') {
+              setLanguage(firstCat);
+          }
+      } catch (error) {
+          console.error("Failed to load assets", error);
+      }
   };
 
 
