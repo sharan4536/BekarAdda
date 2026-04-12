@@ -114,6 +114,12 @@ export default function ModeSelection({ user }) {
               </form>
           </div>
       </div>
+
+      {/* Developer Contact Footer */}
+      <div className="mt-12 text-center text-slate-500 text-sm pb-8 z-10">
+        <p>Contact <a href="https://instagram.com/real_sharan_" target="_blank" rel="noreferrer" className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">@real_sharan_</a></p>
+      </div>
+
     </div>
   );
 }

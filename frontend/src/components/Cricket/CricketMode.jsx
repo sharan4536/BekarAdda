@@ -68,7 +68,17 @@ const fetchAssets = async () => {
   useEffect(() => {
     soundAssets.forEach(s => {
         if (!audioRefs.current[s._id]) {
-            audioRefs.current[s._id] = new Audio(s.url);
+            let finalUrl = s.url;
+            const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
+            
+            // Legacy DB mapping correction for mixed-content
+            if (finalUrl.includes('localhost:5001')) {
+                finalUrl = finalUrl.replace(/https?:\/\/localhost:5001/i, baseUrl);
+            } else if (finalUrl.startsWith('/uploads')) {
+                finalUrl = `${baseUrl}${finalUrl}`;
+            }
+
+            audioRefs.current[s._id] = new Audio(finalUrl);
             audioRefs.current[s._id].volume = 0.6;
             audioRefs.current[s._id].preload = "auto";
         }

@@ -39,10 +39,9 @@ app.post('/api/admin/upload-base64', (req, res) => {
         const base64Data = base64.replace(/^data:(.*?);base64,/, "");
         fs.writeFileSync(uploadPath, base64Data, 'base64');
         
-        // Return localhost base url generically or relative url
-        // Ideally we return the absolute URL to ensure it works across sockets
-        const fullUrl = `http://localhost:5001/uploads/${safeName}`;
-        res.json({ url: fullUrl });
+        // Return relative path so frontend maps it correctly dynamically based on its environment
+        const relativeUrl = `/uploads/${safeName}`;
+        res.json({ url: relativeUrl });
     } catch (e) {
         console.error("Upload error", e);
         res.status(500).json({ error: 'Upload failed' });
@@ -321,12 +320,12 @@ io.on('connection', (socket) => {
       }
   });
 
-  socket.on('cricket_prediction', ({ roomId, userId, matchId, ballId, predictedRuns, predictedWicket }) => {
+  socket.on('cricket_prediction', ({ roomId, userId, roundId, predictedRuns, predictedWicket }) => {
       if(rooms[roomId]) {
-          if(!rooms[roomId].cricketState.predictions[ballId]) {
-             rooms[roomId].cricketState.predictions[ballId] = [];
+          if(!rooms[roomId].cricketState.predictions[roundId]) {
+             rooms[roomId].cricketState.predictions[roundId] = [];
           }
-          rooms[roomId].cricketState.predictions[ballId].push({ userId, predictedRuns, predictedWicket, timestamp: Date.now() });
+          rooms[roomId].cricketState.predictions[roundId].push({ userId, predictedRuns, predictedWicket, timestamp: Date.now() });
       }
   });
 
