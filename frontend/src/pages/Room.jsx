@@ -12,9 +12,10 @@ const RemoteAudio = ({ stream }) => {
     useEffect(() => {
         if(audioRef.current && stream) {
             audioRef.current.srcObject = stream;
+            audioRef.current.play().catch(e => console.error("Audio autoplay error:", e));
         }
     }, [stream]);
-    return <audio ref={audioRef} autoPlay playsInline />;
+    return <audio ref={audioRef} playsInline />;
 };
 
 const AvatarNode = ({ u, stream, isMe, isMuted }) => {
@@ -571,11 +572,11 @@ export default function Room({ user }) {
                            </button>
                        </div>
                    ) : (
-                       <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-contain rounded-2xl" />
+                       <video ref={videoRef} playsInline muted className="w-full h-full object-contain rounded-2xl" />
                    )
                ) : (
                    remoteScreenStream ? (
-                       <video ref={videoRef} autoPlay playsInline controls className="w-full h-full object-contain rounded-2xl" />
+                       <video ref={videoRef} playsInline controls className="w-full h-full object-contain rounded-2xl" />
                    ) : (
                        <div className="text-center text-slate-500 flex flex-col items-center">
                            <div className="w-20 h-20 border-[4px] border-slate-800 border-t-indigo-500 rounded-full animate-spin mb-8"></div>
