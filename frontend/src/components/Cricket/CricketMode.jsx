@@ -32,6 +32,7 @@ export default function CricketMode({ socket, roomId, user, roomData }) {
   const audioRefs = useRef({});
 
   const fetchAssets = async () => {
+      try {
           const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
           const res = await fetch(`${API_BASE}/api/admin/assets`);
           const data = await res.json();
