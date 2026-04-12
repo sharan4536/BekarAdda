@@ -139,9 +139,10 @@ export default function Room({ user }) {
           try {
               appendDebug(`[NEG] Generating Master Offer`);
               pc._makingOffer = true;
-              await pc.setLocalDescription();
+              const offer = await pc.createOffer();
+              await pc.setLocalDescription(offer);
               if (socket) {
-                  socket.emit('webrtc_signal', { to: peerSocketId, signal: pc.localDescription });
+                  socket.emit('offer', { to: peerSocketId, offer: pc.localDescription });
               }
           } catch (err) {
               appendDebug(`[NEG FAIL] ${err.message}`);
@@ -152,8 +153,13 @@ export default function Room({ user }) {
 
       pc.onicecandidate = (event) => {
           if (event.candidate && socket) {
-              socket.emit('webrtc_signal', { to: peerSocketId, signal: { type: 'candidate', candidate: event.candidate } });
+              console.log("ICE candidate generated, emitting...");
+              socket.emit('ice-candidate', { to: peerSocketId, candidate: event.candidate });
           }
+      };
+
+      pc.onconnectionstatechange = () => {
+          console.log(`connectionState: ${pc.connectionState}`);
       };
 
       pc.oniceconnectionstatechange = () => {
@@ -281,51 +287,43 @@ export default function Room({ user }) {
         navigate('/modes');
     });
 
-    socket.on('webrtc_signal', async ({ from, signal }) => {
+    socket.on('offer', async ({ from, offer }) => {
+        console.log("Received Offer from", from);
         let pc = peersRef.current[from];
-        if (!pc) {
-            pc = createPeer(from);
-        }
-
-        const flushIce = async () => {
+        if (!pc) pc = createPeer(from);
+        try {
+            await pc.setRemoteDescription(new RTCSessionDescription(offer));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            socket.emit('answer', { to: from, answer: pc.localDescription });
             if(pc._iceQueue && pc._iceQueue.length > 0) {
-                for(let c of pc._iceQueue) {
-                    await pc.addIceCandidate(c).catch(e => console.error("ICE error:", e));
-                }
+                pc._iceQueue.forEach(c => pc.addIceCandidate(c).catch(e=>console.error(e)));
                 pc._iceQueue = [];
             }
-        };
+        } catch(e) { console.error("Offer Error:", e); }
+    });
 
+    socket.on('answer', async ({ from, answer }) => {
+        console.log("Received Answer from", from);
+        const pc = peersRef.current[from];
+        if(!pc) return;
         try {
-            const polite = socket?.id > from;
-
-            if (signal.type === 'offer') {
-                appendDebug(`[SIG] Rcv offer, generating answer`);
-                try {
-                    await pc.setRemoteDescription(signal);
-                    appendDebug(`[SIG] Remote accepted`);
-                    const answer = await pc.createAnswer();
-                    await pc.setLocalDescription(answer);
-                    socket.emit('webrtc_signal', { to: from, signal: pc.localDescription });
-                    await flushIce();
-                } catch(e) { appendDebug(`[SRD ERROR] ${e.message}`); }
-            } else if (signal.type === 'answer') {
-                appendDebug(`[SIG] Rcv answer`);
-                try {
-                    await pc.setRemoteDescription(signal);
-                    appendDebug(`[SIG] Applied remote answer`);
-                    await flushIce();
-                } catch(e) { appendDebug(`[SRD ERROR] ${e.message}`); }
-            } else if (signal.type === 'candidate' && signal.candidate) {
-                const iceCand = new RTCIceCandidate(signal.candidate);
-                if (pc.remoteDescription && pc.remoteDescription.type) {
-                    await pc.addIceCandidate(iceCand).catch(e => console.error(e));
-                } else {
-                    pc._iceQueue.push(iceCand);
-                }
+            await pc.setRemoteDescription(new RTCSessionDescription(answer));
+            if(pc._iceQueue && pc._iceQueue.length > 0) {
+                pc._iceQueue.forEach(c => pc.addIceCandidate(c).catch(e=>console.error(e)));
+                pc._iceQueue = [];
             }
-        } catch (err) {
-            console.error("WebRTC Signaling Error:", err);
+        } catch(e) { console.error("Answer Error:", e); }
+    });
+
+    socket.on('ice-candidate', async ({ from, candidate }) => {
+        const pc = peersRef.current[from];
+        if(!pc) return;
+        const iceCand = new RTCIceCandidate(candidate);
+        if (pc.remoteDescription && pc.remoteDescription.type) {
+            await pc.addIceCandidate(iceCand).catch(e => console.error("ICE add error:", e));
+        } else {
+            pc._iceQueue.push(iceCand);
         }
     });
 
@@ -572,11 +570,11 @@ export default function Room({ user }) {
                            </button>
                        </div>
                    ) : (
-                       <video ref={videoRef} playsInline muted className="w-full h-full object-contain rounded-2xl" />
+                       <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-contain rounded-2xl" />
                    )
                ) : (
                    remoteScreenStream ? (
-                       <video ref={videoRef} playsInline controls className="w-full h-full object-contain rounded-2xl" />
+                       <video ref={videoRef} autoPlay playsInline controls className="w-full h-full object-contain rounded-2xl" />
                    ) : (
                        <div className="text-center text-slate-500 flex flex-col items-center">
                            <div className="w-20 h-20 border-[4px] border-slate-800 border-t-indigo-500 rounded-full animate-spin mb-8"></div>

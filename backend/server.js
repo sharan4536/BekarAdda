@@ -291,9 +291,20 @@ io.on('connection', (socket) => {
       io.to(roomId).emit('play_sound', { user, soundId });
   });
 
-  // WebRTC Signals
   socket.on('webrtc_signal', ({ signal, to }) => {
       io.to(to).emit('webrtc_signal', { signal, from: socket.id });
+  });
+
+  socket.on('offer', ({ offer, to }) => {
+      io.to(to).emit('offer', { offer, from: socket.id });
+  });
+
+  socket.on('answer', ({ answer, to }) => {
+      io.to(to).emit('answer', { answer, from: socket.id });
+  });
+
+  socket.on('ice-candidate', ({ candidate, to }) => {
+      io.to(to).emit('ice-candidate', { candidate, from: socket.id });
   });
 
   // Meme & Audio sync
