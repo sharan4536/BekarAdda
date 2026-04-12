@@ -32,16 +32,9 @@ app.post('/api/admin/upload-base64', (req, res) => {
         const { filename, base64 } = req.body;
         if (!filename || !base64) return res.status(400).json({ error: 'Missing file data' });
 
-        const ext = path.extname(filename);
-        const safeName = Date.now() + Math.random().toString(36).substring(7) + ext;
-        const uploadPath = path.join(__dirname, 'uploads', safeName);
-        
-        const base64Data = base64.replace(/^data:(.*?);base64,/, "");
-        fs.writeFileSync(uploadPath, base64Data, 'base64');
-        
-        // Return relative path so frontend maps it correctly dynamically based on its environment
-        const relativeUrl = `/uploads/${safeName}`;
-        res.json({ url: relativeUrl });
+        // Bypass Render.com ephemeral disk wiping completely!
+        // We will natively return the Base64 Data URI to be directly embedded into MongoDB Atlas.
+        res.json({ url: base64 });
     } catch (e) {
         console.error("Upload error", e);
         res.status(500).json({ error: 'Upload failed' });
