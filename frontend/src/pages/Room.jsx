@@ -518,56 +518,69 @@ export default function Room({ user }) {
       <div className="flex-1 flex flex-col min-w-0 relative">
         <pre className="absolute top-16 right-4 z-[999] pointer-events-none text-[10px] sm:text-xs bg-black/80 text-lime-400 p-2 max-w-[250px] overflow-y-auto max-h-40 rounded border border-lime-800 break-words whitespace-pre-wrap">{debugLog}</pre>
         
-        {/* Top Navbar */}
-        <header className="h-16 bg-slate-900 border-b border-white/5 flex items-center justify-between px-6 z-20 shadow-sm relative">
-          <div className="flex items-center gap-4">
-             <div className="px-3 py-1 bg-indigo-500/20 text-indigo-400 rounded-full text-xs font-bold tracking-wider uppercase">
-                {roomData.mode} Party
-             </div>
-             <h2 className="font-semibold text-lg max-w-sm ml-2 tracking-wide text-slate-300">#{roomId}</h2>
-          </div>
-          <div className="flex items-center gap-3">
-             <button 
-                 onClick={() => setShowChat(!showChat)}
-                 title="Toggle Chat Window"
-                 className={`p-2 rounded-lg transition-colors border border-white/5 flex items-center gap-2 ${showChat ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'}`}
-             >
-                 <MessageSquare size={18} /> <span className="text-sm font-medium hidden sm:inline">Chat</span>
-             </button>
-             {isHost && (
+        {/* Global Styled Room Header */}
+        <header className="bekar-header !relative !shadow-none border-b border-indigo-500/20 px-4 sm:px-6 z-20 flex-wrap !py-2 shrink-0">
+            
+            <div className="header-left md:flex hidden flex-1">
+                <div className="brand-container cursor-default">
+                    <div className="logo-icon text-xl">⚡</div>
+                    <h1 className="brand-title text-xl">BekarAdda</h1>
+                </div>
+            </div>
+
+            <div className="header-center flex flex-1 items-center justify-center gap-2 sm:gap-3">
+                 <div className="hidden lg:block px-3 py-1 bg-indigo-500/20 text-indigo-400 rounded-full text-[10px] font-bold tracking-widest uppercase border border-indigo-500/30 shadow-[0_0_15px_rgba(79,70,229,0.2)]">
+                    {roomData.mode} MODE
+                 </div>
+                 
                  <button 
-                     onClick={localStream ? stopScreenShare : startScreenShare}
-                     title={localStream ? "Stop screen sharing" : "Share screen"}
-                     className={`p-2 rounded-lg transition-colors border border-white/5 flex items-center gap-2 ml-2 ${localStream ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'}`}
+                     onClick={() => setShowChat(!showChat)}
+                     title="Toggle Chat"
+                     className={`p-2 rounded-xl transition-all border border-white/10 flex items-center gap-2 ${showChat ? 'bg-indigo-500/80 text-white shadow-[0_0_15px_rgba(79,70,229,0.5)]' : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300'}`}
                  >
-                     {localStream ? <MonitorOff size={18} /> : <MonitorUp size={18} />}
+                     <MessageSquare size={16} /> <span className="text-xs font-bold hidden xl:inline tracking-wide">Chat</span>
                  </button>
-             )}
-             <button 
-                 onClick={() => {
-                     navigator.clipboard.writeText(window.location.href);
-                     alert('Room link copied to clipboard!');
-                 }}
-                 className="bg-slate-800 hover:bg-slate-700 p-2 rounded-lg transition-colors border border-white/5 flex items-center gap-2"
-                 title="Copy Room Link"
-             >
-                 <Share2 size={16} />
-             </button>
-             <button 
-                 onClick={() => setIsMuted(!isMuted)} 
-                 className={`p-2 rounded-lg transition-colors border border-white/5 ml-2 ${isMuted ? 'bg-red-500/20 text-red-500' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'}`}
-                 title={isMuted ? "Unmute Microphone" : "Mute Microphone"}
-             >
-                 {isMuted ? <MicOff size={18} /> : <Mic size={18} />}
-             </button>
-             <button 
-                 onClick={() => navigate('/modes')}
-                 className="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-4 py-2 rounded-lg transition-all border border-red-500/30 flex items-center gap-2 ml-4 relative overflow-hidden group"
-             >
-                 <LogOut size={16} className="relative z-10" /> <span className="text-sm font-bold relative z-10">Leave</span>
-                 <div className="absolute inset-0 bg-red-600 scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-300"></div>
-             </button>
-          </div>
+                 
+                 {isHost && (
+                     <button 
+                         onClick={localStream ? stopScreenShare : startScreenShare}
+                         title={localStream ? "Stop screen sharing" : "Share screen"}
+                         className={`p-2 rounded-xl transition-all border border-white/10 flex items-center gap-2 ${localStream ? 'bg-indigo-500/80 text-white shadow-[0_0_15px_rgba(79,70,229,0.5)]' : 'bg-slate-800/80 hover:bg-slate-700 text-indigo-400'}`}
+                     >
+                         {localStream ? <MonitorOff size={16} /> : <MonitorUp size={16} />}
+                         <span className="text-xs font-bold hidden xl:inline tracking-wide">Display</span>
+                     </button>
+                 )}
+                 
+                 <button 
+                     onClick={() => setIsMuted(!isMuted)} 
+                     className={`p-2 rounded-xl transition-all border border-white/10 ${isMuted ? 'bg-red-500/20 text-red-500 border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.3)]' : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300'}`}
+                     title={isMuted ? "Unmute Microphone" : "Mute Microphone"}
+                 >
+                     {isMuted ? <MicOff size={16} /> : <Mic size={16} />}
+                 </button>
+                 
+                 <button 
+                     onClick={() => {
+                         navigator.clipboard.writeText(window.location.href);
+                     }}
+                     className="bg-slate-800/80 hover:bg-slate-700 p-2 rounded-xl transition-colors border border-white/10 flex items-center"
+                     title="Copy Invite Link"
+                 >
+                     <Share2 size={16} className="text-emerald-400" />
+                 </button>
+            </div>
+
+            <div className="header-right hidden sm:flex flex-1 justify-end">
+                <button 
+                    onClick={() => navigate('/modes')}
+                    className="bg-rose-500/10 hover:bg-rose-600 text-rose-500 hover:text-white px-4 py-1.5 rounded-xl transition-all border border-rose-500/30 flex items-center gap-2 relative overflow-hidden group"
+                >
+                    <LogOut size={14} className="relative z-10" /> <span className="text-[10px] uppercase tracking-widest font-bold relative z-10">Leave</span>
+                    <div className="absolute inset-0 bg-rose-600 scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-300"></div>
+                </button>
+            </div>
+            
         </header>
 
         {/* Video Player / Screen Share Area */}

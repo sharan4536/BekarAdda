@@ -9,11 +9,12 @@ import AdminConsole from './pages/AdminConsole';
 function StandardLayout({ user }) {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
+  const isRoom = location.pathname.startsWith('/room');
 
   return (
       <div className="flex flex-col min-h-screen relative w-full h-full">
-         {!isAdmin && <Header user={user} setUser={setUser} />}
-         <main className="flex-grow flex flex-col relative w-full h-full" style={{ paddingTop: isAdmin ? '0' : '65px' }}>
+         {!isAdmin && !isRoom && <Header user={user} setUser={setUser} />}
+         <main className="flex-grow flex flex-col relative w-full h-full" style={{ paddingTop: isAdmin || isRoom ? '0' : '65px' }}>
             <Routes>
               <Route path="/" element={<AuthPage onLogin={setUser => null /* Lifted to App wrapper normally */} />} />
               <Route path="/modes" element={<ModeSelection user={user} />} />
