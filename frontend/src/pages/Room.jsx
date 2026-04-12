@@ -128,8 +128,7 @@ export default function Room({ user }) {
       pc.onnegotiationneeded = async () => {
           try {
               pc._makingOffer = true;
-              const offer = await pc.createOffer();
-              await pc.setLocalDescription(offer);
+              await pc.setLocalDescription();
               if (socket) {
                   socket.emit('webrtc_signal', { to: peerSocketId, signal: pc.localDescription });
               }
@@ -193,6 +192,16 @@ export default function Room({ user }) {
     // Acquire local microphone on join
     navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
         localAudioRef.current = stream;
+        // Retroactively push it to peers if they joined before the user accepted the mic popup!
+        Object.keys(peersRef.current).forEach(socketId => {
+            const pc = peersRef.current[socketId];
+            stream.getTracks().forEach(track => {
+                const existing = pc.getSenders().find(s => s.track && s.track.kind === track.kind);
+                if (!existing && !isMuted) {
+                    pc.addTrack(track, stream);
+                }
+            });
+        });
     }).catch(err => console.log('Mic error:', err));
 
     return () => {
@@ -275,25 +284,19 @@ export default function Room({ user }) {
             if (signal.type === 'offer') {
                 const offerCollision = pc._makingOffer || pc.signalingState !== 'stable';
                 
-                if (offerCollision && !polite) {
+                pc._ignoreOffer = !polite && offerCollision;
+                if (pc._ignoreOffer) {
                     console.log("Impolite peer dropping concurrent offer collision from", from);
                     return; 
                 }
-                
-                if (offerCollision) {
-                    await pc.setLocalDescription({ type: 'rollback' }).catch(e => console.log('Rollback ignored/unsupported'));
-                }
 
-                await pc.setRemoteDescription(new RTCSessionDescription(signal));
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
+                await pc.setRemoteDescription(signal);
+                await pc.setLocalDescription();
                 socket.emit('webrtc_signal', { to: from, signal: pc.localDescription });
                 await flushIce();
             } else if (signal.type === 'answer') {
-                if (pc.signalingState === 'have-local-offer') {
-                    await pc.setRemoteDescription(new RTCSessionDescription(signal));
-                    await flushIce();
-                }
+                await pc.setRemoteDescription(signal);
+                await flushIce();
             } else if (signal.type === 'candidate' && signal.candidate) {
                 const iceCand = new RTCIceCandidate(signal.candidate);
                 if (pc.remoteDescription && pc.remoteDescription.type) {
