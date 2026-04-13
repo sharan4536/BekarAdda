@@ -8,7 +8,9 @@ const UserSchema = new mongoose.Schema({
   friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   totalPoints: { type: Number, default: 0 },
   currentStreak: { type: Number, default: 0 },
-  bestStreak: { type: Number, default: 0 }
+  bestStreak: { type: Number, default: 0 },
+  resetPasswordToken: { type: String },
+  resetPasswordExpires: { type: Date }
 });
 
 module.exports = mongoose.model('User', UserSchema);

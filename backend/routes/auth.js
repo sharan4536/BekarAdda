@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const User = require('../models/User');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey_bekaradda1234'; // Replace in Prod via .env
@@ -82,6 +83,62 @@ router.get('/me', auth, async (req, res) => {
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');
+    }
+});
+
+// @route   POST /api/auth/forgot-password
+router.post('/forgot-password', async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+        
+        if (!user) {
+            // We return 200 anyway to prevent email enumeration attacks
+            return res.status(200).json({ message: 'If an account exists, a reset link was generated.' });
+        }
+
+        const resetToken = crypto.randomBytes(20).toString('hex');
+        user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+        user.resetPasswordExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
+        
+        await user.save();
+
+        // Normally, send via email. Here, we return it to the frontend purely for simulation testing.
+        res.status(200).json({ 
+            message: 'If an account exists, a reset link was generated.',
+            _devLink: `${resetToken}` // Explicitly exposed for UI emulation since SMTP is undefined.
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server Error' });
+    }
+});
+
+// @route   POST /api/auth/reset-password
+router.post('/reset-password', async (req, res) => {
+    try {
+        const { token, newPassword } = req.body;
+        const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+        const user = await User.findOne({
+            resetPasswordToken: hashedToken,
+            resetPasswordExpires: { $gt: Date.now() }
+        });
+
+        if (!user) {
+            return res.status(400).json({ error: 'Token is invalid or has expired' });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(newPassword, salt);
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpires = undefined;
+
+        await user.save();
+        res.status(200).json({ message: 'Password has been successfully reset' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server Error' });
     }
 });
 

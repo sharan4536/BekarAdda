@@ -16,8 +16,7 @@ export default function CricketMode({ socket, roomId, user, roomData }) {
     const [myPrediction, setMyPrediction] = useState(null);
     const [lastEvent, setLastEvent] = useState(null);
     const [leaderboard, setLeaderboard] = useState([]);
-
-    // No dares state needed
+    const [showLeaderboard, setShowLeaderboard] = useState(false);
     // Reaction Engine states
     const [assets, setAssets] = useState([]);
     const [bursts, setBursts] = useState([]);
@@ -74,7 +73,7 @@ export default function CricketMode({ socket, roomId, user, roomData }) {
                 }
 
                 audioRefs.current[s._id] = new Audio(finalUrl);
-                audioRefs.current[s._id].volume = 0.6;
+                audioRefs.current[s._id].volume = 0.36;
                 audioRefs.current[s._id].preload = "auto";
             }
         });
@@ -120,6 +119,8 @@ export default function CricketMode({ socket, roomId, user, roomData }) {
 
         socket.on('leaderboard_update', (lb) => {
             setLeaderboard(lb);
+            setShowLeaderboard(true);
+            setTimeout(() => setShowLeaderboard(false), 3000);
         });
 
         // Dynamic Reactions
@@ -139,7 +140,7 @@ export default function CricketMode({ socket, roomId, user, roomData }) {
         socket.on('play_meme', (memeData) => {
             try {
                 const audio = new Audio(memeData.url);
-                audio.volume = 0.4;
+                audio.volume = 0.24;
                 audio.play().catch(e => console.log('Audio autoplay blocked', e));
             } catch (e) { }
         });
@@ -312,7 +313,11 @@ export default function CricketMode({ socket, roomId, user, roomData }) {
             {/* TOP LEVEL: Score & Leaderboard */}
             <div className="flex justify-between items-start pointer-events-auto">
                 <div className="flex flex-col gap-4">
-                    {/* Live Match Bug Removed - Fully Manual Host Controlled */}
+                    
+                    {/* Leaderboard Manually Trigger Icon overlaying correctly near User Panel */}
+                    <button onClick={() => setShowLeaderboard(!showLeaderboard)} className="w-10 h-10 bg-slate-900/80 backdrop-blur border border-amber-500/30 rounded-xl flex items-center justify-center text-amber-500 hover:scale-110 transition shadow-[0_0_15px_rgba(245,158,11,0.2)]" title="Toggle Leaderboard">
+                        <Trophy size={18} />
+                    </button>
 
                     {/* Host Game Master Control */}
                     {roomData?.host === socket?.id && (
@@ -321,33 +326,32 @@ export default function CricketMode({ socket, roomId, user, roomData }) {
                                 <>
                                     <button
                                         onClick={() => socket.emit('cricket_action', { roomId, action: 'start_prediction' })}
-                                        className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl font-bold tracking-wide transition shadow-lg shadow-indigo-500/20 flex items-center gap-2"
+                                        className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl font-bold tracking-wide transition shadow-lg shadow-indigo-500/20 flex items-center gap-2 text-sm"
                                     >
-                                        <PlayCircle size={18} /> Start Prediction Round
+                                        <PlayCircle size={16} /> Loop Predictions
                                     </button>
-                                    <p className="text-xs text-indigo-300 mt-2 font-medium">You control the reality. (Game Master)</p>
                                 </>
                             ) : !isLocked ? (
                                 <>
                                     <button
                                         onClick={() => socket.emit('cricket_action', { roomId, action: 'cancel_prediction' })}
-                                        className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-xl font-bold tracking-wide transition shadow-lg shadow-red-500/20 flex items-center gap-2"
+                                        className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-xl font-bold tracking-wide transition shadow-lg shadow-red-500/20 flex items-center gap-2 text-sm"
                                     >
-                                        <X size={18} /> Cancel Round
+                                        <X size={16} /> Stop Loop
                                     </button>
-                                    <p className="text-xs text-red-300 mt-2 font-medium">Guests are predicting... ({timeLeft}s)</p>
+                                    <p className="text-xs text-red-300 mt-2 font-medium">Predicting... ({timeLeft}s)</p>
                                 </>
                             ) : (
                                 <div className="flex flex-col items-center">
-                                    <h4 className="font-black text-amber-500 mb-3 tracking-widest uppercase text-sm">Target Locked. Enter Actual Result:</h4>
-                                    <div className="grid grid-cols-4 gap-2 mb-2">
+                                    <h4 className="font-black text-amber-500 mb-2 tracking-widest uppercase text-xs">Enter Actual Result:</h4>
+                                    <div className="grid grid-cols-4 gap-1 mb-2">
                                         {[0, 1, 2, 3, 4, 6].map(runs => (
-                                            <button key={`host-${runs}`} onClick={() => submitHostResult(runs, false)} className="bg-slate-700 hover:bg-indigo-500 text-white py-2 px-4 rounded-lg font-bold transition">
+                                            <button key={`host-${runs}`} onClick={() => submitHostResult(runs, false)} className="bg-slate-700 hover:bg-indigo-500 text-white py-1.5 px-3 rounded text-sm font-bold transition">
                                                 {runs}
                                             </button>
                                         ))}
                                     </div>
-                                    <button onClick={() => submitHostResult(0, true)} className="w-full bg-red-600 hover:bg-red-500 text-white py-2 rounded-lg font-bold transition uppercase tracking-widest mt-1">
+                                    <button onClick={() => submitHostResult(0, true)} className="w-full bg-red-600 hover:bg-red-500 text-white py-1.5 rounded font-bold transition uppercase text-xs tracking-widest mt-1">
                                         Wicket
                                     </button>
                                 </div>
@@ -357,22 +361,20 @@ export default function CricketMode({ socket, roomId, user, roomData }) {
                 </div>
 
                 {/* LEADERBOARD PANEL */}
-                {leaderboard.length > 0 && (
-                    <div className="w-64 bg-slate-900/80 backdrop-blur-md border border-white/10 rounded-2xl p-4 shadow-xl pointer-events-auto">
-                        <h3 className="font-bold text-xs uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
-                            <Trophy size={14} className="text-amber-400" /> Leaderboard
-                        </h3>
+                {showLeaderboard && leaderboard.length > 0 && (
+                    <div className="w-64 bg-slate-900/95 backdrop-blur-md border border-white/10 rounded-2xl p-4 shadow-2xl animate-in fade-in slide-in-from-top-4 duration-300">
+                        <div className="flex justify-between items-center mb-3">
+                            <h3 className="font-bold text-xs uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                                <Trophy size={14} className="text-amber-400" /> Leaderboard
+                            </h3>
+                            <button onClick={() => setShowLeaderboard(false)} className="text-slate-500 hover:text-white"><X size={14}/></button>
+                        </div>
                         <div className="space-y-2">
                             {leaderboard.map((lb, i) => (
                                 <div key={lb.username} className="flex items-center justify-between bg-black/40 px-3 py-2 rounded-lg">
                                     <div className="flex items-center gap-2 truncate">
                                         <span className="text-xs font-bold text-slate-500 w-3">{i + 1}</span>
                                         <span className="text-sm font-medium truncate">{lb.username}</span>
-                                        {lb.streak >= 2 && (
-                                            <span className="flex items-center text-orange-500 text-[10px] font-bold bg-orange-500/10 px-1.5 py-0.5 rounded border border-orange-500/20" title={`Streak: ${lb.streak} in a row!`}>
-                                                <Flame size={10} className="mr-0.5" />{lb.streak}
-                                            </span>
-                                        )}
                                     </div>
                                     <span className="text-sm font-black text-indigo-400">{lb.points}</span>
                                 </div>
@@ -386,22 +388,22 @@ export default function CricketMode({ socket, roomId, user, roomData }) {
             <div className="flex flex-col items-center justify-end pointer-events-auto mt-auto gap-4">
                 {/* ACTIVE PREDICTION UI */}
                 {predictionWindow && !myPrediction && (
-                    <div className="bg-slate-900/95 backdrop-blur-xl border-t-2 border-indigo-500 p-8 rounded-3xl shadow-2xl text-center max-w-lg w-full animate-in slide-in-from-bottom-8 fade-in duration-300">
+                    <div className="bg-slate-900/95 backdrop-blur-xl border-t-2 border-indigo-500 p-4 rounded-2xl shadow-2xl text-center max-w-sm w-full animate-in slide-in-from-bottom-4 fade-in duration-300">
 
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-2xl font-black">{isLocked ? "Time's up! Awaiting Host..." : "Predict Next Ball!"}</h3>
-                            <div className="flex items-center gap-2 text-indigo-300 font-mono font-medium bg-indigo-950/50 py-1.5 px-3 rounded-full border border-indigo-500/20">
-                                {isLocked ? <Flame size={16} className="text-amber-500 animate-pulse" /> : <Clock size={16} />}
-                                {isLocked ? 'LOCKED' : `00:${timeLeft.toString().padStart(2, '0')}s`}
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-black">{isLocked ? "Host Deciding..." : "Predict Next Ball!"}</h3>
+                            <div className="flex items-center gap-1.5 text-indigo-300 font-mono font-bold bg-indigo-950/50 py-1.5 px-3 rounded-full border border-indigo-500/20 text-xs shadow-inner">
+                                {isLocked ? <Flame size={14} className="text-amber-500 animate-pulse" /> : <Clock size={14} />}
+                                {isLocked ? 'LOCKED' : `00:${timeLeft.toString().padStart(2, '0')}`}
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-6 gap-2 mb-4">
+                        <div className="grid grid-cols-6 gap-2 mb-3">
                             {[0, 1, 2, 3, 4, 6].map(runs => (
                                 <button
                                     key={runs}
                                     onClick={() => submitPrediction(runs, false)}
-                                    className="bg-slate-800 hover:bg-indigo-600 border border-white/5 py-4 rounded-xl font-black text-lg transition-all hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-500/20"
+                                    className="bg-slate-800 hover:bg-indigo-600 border border-white/5 py-3 rounded-xl font-black text-sm transition-all hover:scale-105 active:scale-95 shadow-md shadow-black/50"
                                 >
                                     {runs}
                                 </button>
@@ -409,7 +411,7 @@ export default function CricketMode({ socket, roomId, user, roomData }) {
                         </div>
                         <button
                             onClick={() => submitPrediction(null, true)}
-                            className="w-full bg-red-950/40 text-red-400 border border-red-500/30 hover:bg-red-600 hover:text-white py-4 rounded-xl font-black text-xl transition-all uppercase tracking-widest"
+                            className="w-full bg-red-950/40 text-red-400 border border-red-500/30 hover:bg-red-600 hover:text-white py-2 rounded-xl font-black text-sm transition-all uppercase tracking-widest active:scale-95"
                         >
                             Wicket
                         </button>

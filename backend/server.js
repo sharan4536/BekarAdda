@@ -323,22 +323,23 @@ io.on('connection', (socket) => {
           if (action === 'start_prediction') {
               if (room.cricketState.phase !== 'idle') return; 
               
+              room.cricketState.isLooping = true;
               const roundId = `round_${Math.random().toString(36).substr(2,6)}`;
               room.cricketState.phase = 'predicting';
               room.cricketState.currentRoundId = roundId;
               room.cricketState.windowStart = Date.now();
               room.cricketState.predictions[roundId] = [];
               
-              io.to(roomId).emit('prediction_window', { roundId, duration: 15 });
-              // Automatically shift to host_input phase when duration is over (client will also transition but backend enforces it)
+              io.to(roomId).emit('prediction_window', { roundId, duration: 4 });
               setTimeout(() => {
                   if(room.cricketState.currentRoundId === roundId) {
                       room.cricketState.phase = 'host_input';
                       io.to(roomId).emit('prediction_locked');
                   }
-              }, 16000); 
+              }, 5000); 
 
           } else if (action === 'cancel_prediction') {
+              room.cricketState.isLooping = false;
               room.cricketState.phase = 'idle';
               room.cricketState.currentRoundId = null;
               io.to(roomId).emit('cancel_prediction');
@@ -355,10 +356,7 @@ io.on('connection', (socket) => {
 
                       if (room.leaderboard[p.userId]) {
                         if(isCorrect) {
-                            let pts = 10;
-                            if (p.timestamp - room.cricketState.windowStart < 5000) pts += 5; // Fast bonus
-                            room.leaderboard[p.userId].points += pts;
-                            room.leaderboard[p.userId].streak = (room.leaderboard[p.userId].streak || 0) + 1;
+                            room.leaderboard[p.userId].points += 1;
                         } else {
                             room.leaderboard[p.userId].streak = 0;
                         }
@@ -366,9 +364,7 @@ io.on('connection', (socket) => {
                  });
                  io.to(roomId).emit('leaderboard_update', Object.values(room.leaderboard).sort((a,b) => b.points - a.points));
                  
-                 // Dares Engine entirely deprecated
-
-                 // Emit to clients exactly what was submitted to trigger visual Confetti correctly via exact string!
+                 // Emit exactly what was submitted to trigger visual Confetti correctly via exact string!
                  io.to(roomId).emit('cricket_event', {
                      type: 'result_declared',
                      roundId,
@@ -381,8 +377,28 @@ io.on('connection', (socket) => {
                  room.cricketState.phase = 'idle';
                  room.cricketState.currentRoundId = null;
                  delete room.cricketState.predictions[roundId];
-                 
                  io.to(roomId).emit('cancel_prediction'); // Clears prediction UI block
+                 
+                 // CONTINUOUS PREDICTION LOOP ENGINE
+                 if (room.cricketState.isLooping) {
+                     setTimeout(() => {
+                         if(rooms[roomId] && rooms[roomId].cricketState.isLooping && rooms[roomId].cricketState.phase === 'idle') {
+                             const nextRoundId = `round_${Math.random().toString(36).substr(2,6)}`;
+                             rooms[roomId].cricketState.phase = 'predicting';
+                             rooms[roomId].cricketState.currentRoundId = nextRoundId;
+                             rooms[roomId].cricketState.windowStart = Date.now();
+                             rooms[roomId].cricketState.predictions[nextRoundId] = [];
+                             
+                             io.to(roomId).emit('prediction_window', { roundId: nextRoundId, duration: 4 });
+                             setTimeout(() => {
+                                 if(rooms[roomId] && rooms[roomId].cricketState.currentRoundId === nextRoundId) {
+                                     rooms[roomId].cricketState.phase = 'host_input';
+                                     io.to(roomId).emit('prediction_locked');
+                                 }
+                             }, 5000);
+                         }
+                     }, 1500); // Wait 1.5 seconds so users see result confetti, then blast next loop implicitly.
+                 }
               }
           }
       }
