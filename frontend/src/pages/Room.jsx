@@ -89,8 +89,7 @@ export default function Room({ user }) {
   const localStreamRef = useRef(null);
   const [remoteScreenStream, setRemoteScreenStream] = useState(null);
   const [remoteAudioTracks, setRemoteAudioTracks] = useState({});
-  const [debugLog, setDebugLog] = useState("");
-  const appendDebug = (msg) => setDebugLog(prev => prev + msg + "\n");
+  const appendDebug = (msg) => console.log(`[WebRTC] ${msg}`);
 
   const messagesEndRef = useRef(null);
   const videoRef = useRef(null);
@@ -514,7 +513,6 @@ export default function Room({ user }) {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 relative">
-        <pre className="absolute top-16 right-4 z-[999] pointer-events-none text-[10px] sm:text-xs bg-black/80 text-lime-400 p-2 max-w-[250px] overflow-y-auto max-h-40 rounded border border-lime-800 break-words whitespace-pre-wrap">{debugLog}</pre>
         
         {/* Global Styled Room Header */}
         <header className="bekar-header !relative !shadow-none border-b border-indigo-500/20 px-4 sm:px-6 z-20 flex-wrap !py-2 shrink-0">
