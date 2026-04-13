@@ -119,8 +119,14 @@ export default function Room({ user }) {
   const pcConfig = {
       iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
           {
             urls: 'turn:openrelay.metered.ca:80',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+          },
+          {
+            urls: 'turn:openrelay.metered.ca:443',
             username: 'openrelayproject',
             credential: 'openrelayproject'
           }
@@ -164,10 +170,18 @@ export default function Room({ user }) {
 
       pc.onconnectionstatechange = () => {
           console.log(`connectionState: ${pc.connectionState}`);
+          if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+              appendDebug(`[CONN FAIL] Restarting ICE`);
+              if (typeof pc.restartIce === 'function') pc.restartIce();
+          }
       };
 
       pc.oniceconnectionstatechange = () => {
           appendDebug(`[ICE] state: ${pc.iceConnectionState}`);
+          if (pc.iceConnectionState === 'failed') {
+              appendDebug(`[ICE FAIL] Restarting ICE`);
+              if (typeof pc.restartIce === 'function') pc.restartIce();
+          }
       };
 
       pc.ontrack = (event) => {
@@ -334,8 +348,8 @@ export default function Room({ user }) {
     });
 
     socket.on('ice-candidate', async ({ from, candidate }) => {
-        const pc = peersRef.current[from];
-        if(!pc) return;
+        let pc = peersRef.current[from];
+        if(!pc) pc = createPeer(from);
         const iceCand = new RTCIceCandidate(candidate);
         if (pc.remoteDescription && pc.remoteDescription.type) {
             await pc.addIceCandidate(iceCand).catch(e => console.error("ICE add error:", e));
