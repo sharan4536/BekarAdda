@@ -530,6 +530,10 @@ export default function Room({ user }) {
                  <div className="hidden lg:block px-3 py-1 bg-indigo-500/20 text-indigo-400 rounded-full text-[10px] font-bold tracking-widest uppercase border border-indigo-500/30 shadow-[0_0_15px_rgba(79,70,229,0.2)]">
                     {roomData.mode} MODE
                  </div>
+
+                 <div className="px-3 py-1 flex items-center gap-2 bg-slate-900/80 text-slate-300 rounded-lg text-sm font-mono tracking-wide border border-white/10 shadow-inner" title="Party Code">
+                    <span className="text-indigo-500 font-black">#</span>{roomId}
+                 </div>
                  
                  <button 
                      onClick={() => setShowChat(!showChat)}
