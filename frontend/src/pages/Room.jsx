@@ -137,53 +137,33 @@ export default function Room({ user }) {
       if (peersRef.current[peerSocketId]) return peersRef.current[peerSocketId];
 
       const pc = new RTCPeerConnection(pcConfig);
-      pc._iceQueue = [];
-      pc._makingOffer = false;
-
-      // Force instant negotiation and ICE ICE tunnel establishment regardless of camera state!
-      pc.createDataChannel('sync');
-
+      
       pc.onnegotiationneeded = async () => {
-          const polite = socket?.id > peerSocketId;
           try {
               appendDebug(`[NEG] Generating Offer`);
-              pc._makingOffer = true;
               const offer = await pc.createOffer();
-              if (pc.signalingState !== "stable" && !polite) return;
               await pc.setLocalDescription(offer);
               if (socket) {
                   socket.emit('offer', { to: peerSocketId, offer: pc.localDescription });
               }
           } catch (err) {
               appendDebug(`[NEG FAIL] ${err.message}`);
-          } finally {
-              pc._makingOffer = false;
           }
       };
 
       pc.onicecandidate = (event) => {
           if (event.candidate && socket) {
-              console.log("ICE candidate generated, emitting...");
               socket.emit('ice-candidate', { to: peerSocketId, candidate: event.candidate });
           }
       };
 
-      pc.onconnectionstatechange = () => {
-          appendDebug(`connectionState: ${pc.connectionState}`);
-      };
-
-      pc.oniceconnectionstatechange = () => {
-          appendDebug(`[ICE] state: ${pc.iceConnectionState}`);
-      };
+      pc.onconnectionstatechange = () => appendDebug(`connState: ${pc.connectionState}`);
+      pc.oniceconnectionstatechange = () => appendDebug(`iceState: ${pc.iceConnectionState}`);
 
       pc.ontrack = (event) => {
           appendDebug(`[ONTRACK] Kind: ${event.track.kind}`);
           if (event.track.kind === 'video') {
-              if (event.streams && event.streams[0]) {
-                  setRemoteScreenStream(event.streams[0]);
-              } else {
-                  setRemoteScreenStream(new MediaStream([event.track]));
-              }
+              setRemoteScreenStream(event.streams[0] || new MediaStream([event.track]));
           } else if (event.track.kind === 'audio') {
               setRemoteAudioTracks(prev => ({
                   ...prev,
@@ -192,22 +172,17 @@ export default function Room({ user }) {
           }
       };
 
-      // Push local microphone track if available natively via addTrack
+      // Instantly inject any existing audio (microphone) tracks
       if (localAudioRef.current && !isMuted) {
-          const audioTrack = localAudioRef.current.getAudioTracks()[0];
-          if (audioTrack) {
-              pc.addTrack(audioTrack, localAudioRef.current);
-          }
+          localAudioRef.current.getAudioTracks().forEach(track => {
+              pc.addTrack(track, localAudioRef.current);
+          });
       }
 
-      // Push local screen track if available
+      // Instantly inject existing video (screen) tracks
       if (localStreamRef.current) {
           localStreamRef.current.getTracks().forEach(track => {
-              // Only add if it doesn't already exist on the connection
-              const existingSender = pc.getSenders().find(s => s.track === track);
-              if (!existingSender) {
-                  pc.addTrack(track, localStreamRef.current);
-              }
+              pc.addTrack(track, localStreamRef.current);
           });
       }
 
@@ -219,12 +194,11 @@ export default function Room({ user }) {
     // Acquire local microphone on join
     navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
         localAudioRef.current = stream;
-        // Retroactively push it to peers if they joined before the user accepted the mic popup!
         Object.keys(peersRef.current).forEach(socketId => {
             const pc = peersRef.current[socketId];
             stream.getTracks().forEach(track => {
-                const existing = pc.getSenders().find(s => s.track === track);
-                if (!existing && !isMuted) {
+                const senders = pc.getSenders();
+                if (!senders.find(s => s.track === track) && !isMuted) {
                     pc.addTrack(track, stream);
                 }
             });
@@ -250,8 +224,8 @@ export default function Room({ user }) {
 
     socket.on('room_update', (data) => {
       setRoomData(data);
-      // Universal Peer Bootstrapper: Symmetrical Perfect Negotiation allows everyone to construct
-      if (data && data.users) {
+      // Strictly Host-originated Topology to completely sidestep 'offer/offer' collisions mathematically.
+      if (data && data.users && data.host === socket?.id) {
           data.users.forEach(u => {
               if (u.socketId !== socket?.id && !peersRef.current[u.socketId]) {
                   createPeer(u.socketId);
@@ -260,16 +234,14 @@ export default function Room({ user }) {
       }
     });
 
-    socket.on('chat_history', (history) => {
-        setMessages(history);
-    });
-
-    socket.on('chat_message', (msg) => {
-      setMessages(prev => [...prev, msg]);
-    });
+    socket.on('chat_history', (history) => setMessages(history));
+    socket.on('chat_message', (msg) => setMessages(prev => [...prev, msg]));
 
     socket.on('user_joined', async ({ socketId }) => {
-        createPeer(socketId);
+        // If I am the Host, I initiate the tunnel for the new user immediately!
+        if (roomDataRef.current?.host === socket?.id) {
+            createPeer(socketId);
+        }
     });
 
     socket.on('user_left', ({ socketId }) => {
@@ -288,10 +260,7 @@ export default function Room({ user }) {
         if (newConfig && newConfig.features) setAdminConfig(newConfig);
     });
 
-    socket.on('force_mute', () => {
-        setIsMuted(true);
-    });
-
+    socket.on('force_mute', () => setIsMuted(true));
     socket.on('force_kick', () => {
         alert("You have been removed from the party by the host.");
         navigate('/modes');
@@ -302,27 +271,11 @@ export default function Room({ user }) {
         let pc = peersRef.current[from];
         if (!pc) pc = createPeer(from);
 
-        const polite = socket?.id > from;
-        const offerCollision = pc._makingOffer || pc.signalingState !== 'stable';
-        
-        if (offerCollision && !polite) return;
-        
         try {
-            if (offerCollision) {
-                await Promise.all([
-                    pc.setLocalDescription({ type: 'rollback' }),
-                    pc.setRemoteDescription(new RTCSessionDescription(offer))
-                ]);
-            } else {
-                await pc.setRemoteDescription(new RTCSessionDescription(offer));
-            }
+            await pc.setRemoteDescription(new RTCSessionDescription(offer));
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
             socket.emit('answer', { to: from, answer: pc.localDescription });
-            if(pc._iceQueue && pc._iceQueue.length > 0) {
-                pc._iceQueue.forEach(c => pc.addIceCandidate(c).catch(e=>console.error(e)));
-                pc._iceQueue = [];
-            }
         } catch(e) { console.error("Offer Error:", e); }
     });
 
@@ -332,22 +285,15 @@ export default function Room({ user }) {
         if(!pc) return;
         try {
             await pc.setRemoteDescription(new RTCSessionDescription(answer));
-            if(pc._iceQueue && pc._iceQueue.length > 0) {
-                pc._iceQueue.forEach(c => pc.addIceCandidate(c).catch(e=>console.error(e)));
-                pc._iceQueue = [];
-            }
         } catch(e) { console.error("Answer Error:", e); }
     });
 
     socket.on('ice-candidate', async ({ from, candidate }) => {
         let pc = peersRef.current[from];
         if(!pc) pc = createPeer(from);
-        const iceCand = new RTCIceCandidate(candidate);
-        if (pc.remoteDescription && pc.remoteDescription.type) {
-            await pc.addIceCandidate(iceCand).catch(e => console.error("ICE add error:", e));
-        } else {
-            pc._iceQueue.push(iceCand);
-        }
+        try {
+            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch(e) { console.log("ICE error safely ignored contextually."); }
     });
 
     return () => {
