@@ -169,19 +169,11 @@ export default function Room({ user }) {
       };
 
       pc.onconnectionstatechange = () => {
-          console.log(`connectionState: ${pc.connectionState}`);
-          if (pc.connectionState === 'failed') {
-              appendDebug(`[CONN FAIL] Restarting ICE`);
-              if (typeof pc.restartIce === 'function') pc.restartIce();
-          }
+          appendDebug(`connectionState: ${pc.connectionState}`);
       };
 
       pc.oniceconnectionstatechange = () => {
           appendDebug(`[ICE] state: ${pc.iceConnectionState}`);
-          if (pc.iceConnectionState === 'failed') {
-              appendDebug(`[ICE FAIL] Restarting ICE`);
-              if (typeof pc.restartIce === 'function') pc.restartIce();
-          }
       };
 
       pc.ontrack = (event) => {
@@ -258,8 +250,8 @@ export default function Room({ user }) {
 
     socket.on('room_update', (data) => {
       setRoomData(data);
-      // Universal Peer Bootstrapper: Host strictly constructs architecture topology to prevent double-offer collisions!
-      if (data && data.users && data.host === socket?.id) {
+      // Universal Peer Bootstrapper: Symmetrical Perfect Negotiation allows everyone to construct
+      if (data && data.users) {
           data.users.forEach(u => {
               if (u.socketId !== socket?.id && !peersRef.current[u.socketId]) {
                   createPeer(u.socketId);
@@ -407,8 +399,10 @@ export default function Room({ user }) {
 
   const startScreenShare = async () => {
      try {
-         // Restored crucial audio parameter for Movie Mode watch parties
-         const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+         // EXTREMELY FORGIVING CONSTRAINT: Stripped audio completely.
+         // Mac CoreAudio loopback occasionally crashes and instantly rejects the stream with NotAllowedError.
+         // By strictly requesting video, we bypass the OS-level audio routing crash.
+         const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
          
          stream.getVideoTracks()[0].onended = () => stopScreenShare();
          
