@@ -170,7 +170,7 @@ export default function Room({ user }) {
 
       pc.onconnectionstatechange = () => {
           console.log(`connectionState: ${pc.connectionState}`);
-          if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+          if (pc.connectionState === 'failed') {
               appendDebug(`[CONN FAIL] Restarting ICE`);
               if (typeof pc.restartIce === 'function') pc.restartIce();
           }
@@ -407,10 +407,8 @@ export default function Room({ user }) {
 
   const startScreenShare = async () => {
      try {
-         // EXTREMELY FORGIVING CONSTRAINT: Stripped audio completely. 
-         // Mac CoreAudio loopback occasionally crashes and instantly rejects the stream with NotAllowedError.
-         // By strictly requesting video, we bypass the OS-level audio routing crash.
-         const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+         // Restored crucial audio parameter for Movie Mode watch parties
+         const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
          
          stream.getVideoTracks()[0].onended = () => stopScreenShare();
          
