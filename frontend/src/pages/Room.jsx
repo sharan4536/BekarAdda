@@ -138,16 +138,23 @@ export default function Room({ user }) {
 
       const pc = new RTCPeerConnection(pcConfig);
       
+      // Flags required for Symmetrical Perfect Negotiation
+      pc._makingOffer = false;
+      pc._ignoreOffer = false;
+      
       pc.onnegotiationneeded = async () => {
           try {
-              appendDebug(`[NEG] Generating Offer`);
+              pc._makingOffer = true;
               const offer = await pc.createOffer();
+              if (pc.signalingState !== "stable") return;
               await pc.setLocalDescription(offer);
               if (socket) {
                   socket.emit('offer', { to: peerSocketId, offer: pc.localDescription });
               }
           } catch (err) {
-              appendDebug(`[NEG FAIL] ${err.message}`);
+              console.error("[NEG FAIL]", err);
+          } finally {
+              pc._makingOffer = false;
           }
       };
 
@@ -161,7 +168,6 @@ export default function Room({ user }) {
       pc.oniceconnectionstatechange = () => appendDebug(`iceState: ${pc.iceConnectionState}`);
 
       pc.ontrack = (event) => {
-          appendDebug(`[ONTRACK] Kind: ${event.track.kind}`);
           if (event.track.kind === 'video') {
               setRemoteScreenStream(event.streams[0] || new MediaStream([event.track]));
           } else if (event.track.kind === 'audio') {
@@ -224,8 +230,7 @@ export default function Room({ user }) {
 
     socket.on('room_update', (data) => {
       setRoomData(data);
-      // Strictly Host-originated Topology to completely sidestep 'offer/offer' collisions mathematically.
-      if (data && data.users && data.host === socket?.id) {
+      if (data && data.users) {
           data.users.forEach(u => {
               if (u.socketId !== socket?.id && !peersRef.current[u.socketId]) {
                   createPeer(u.socketId);
@@ -238,10 +243,7 @@ export default function Room({ user }) {
     socket.on('chat_message', (msg) => setMessages(prev => [...prev, msg]));
 
     socket.on('user_joined', async ({ socketId }) => {
-        // If I am the Host, I initiate the tunnel for the new user immediately!
-        if (roomDataRef.current?.host === socket?.id) {
-            createPeer(socketId);
-        }
+        createPeer(socketId);
     });
 
     socket.on('user_left', ({ socketId }) => {
@@ -271,8 +273,25 @@ export default function Room({ user }) {
         let pc = peersRef.current[from];
         if (!pc) pc = createPeer(from);
 
+        const polite = socket?.id > from;
+        const offerCollision = (offer.type === 'offer') && (pc._makingOffer || pc.signalingState !== 'stable');
+        
+        pc._ignoreOffer = !polite && offerCollision;
+        if (pc._ignoreOffer) {
+            console.log("Ignoring impolite offer collision");
+            return;
+        }
+
         try {
-            await pc.setRemoteDescription(new RTCSessionDescription(offer));
+            if (offerCollision) {
+                await Promise.all([
+                    pc.setLocalDescription({ type: 'rollback' }),
+                    pc.setRemoteDescription(new RTCSessionDescription(offer))
+                ]);
+            } else {
+                await pc.setRemoteDescription(new RTCSessionDescription(offer));
+            }
+            
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
             socket.emit('answer', { to: from, answer: pc.localDescription });
@@ -291,9 +310,11 @@ export default function Room({ user }) {
     socket.on('ice-candidate', async ({ from, candidate }) => {
         let pc = peersRef.current[from];
         if(!pc) pc = createPeer(from);
+        
         try {
-            await pc.addIceCandidate(new RTCIceCandidate(candidate));
-        } catch(e) { console.log("ICE error safely ignored contextually."); }
+            // Modern browsers natively queue ICE candidates; ignoreError avoids crash on early timing
+            pc._ignoreOffer || await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch(e) { console.log("ICE implicitly queued via modern WebRTC engine."); }
     });
 
     return () => {
