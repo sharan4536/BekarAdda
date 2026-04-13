@@ -407,13 +407,16 @@ export default function Room({ user }) {
 
   const startScreenShare = async () => {
      try {
-         const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+         // EXTREMELY FORGIVING CONSTRAINT: Stripped audio completely. 
+         // Mac CoreAudio loopback occasionally crashes and instantly rejects the stream with NotAllowedError.
+         // By strictly requesting video, we bypass the OS-level audio routing crash.
+         const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+         
          stream.getVideoTracks()[0].onended = () => stopScreenShare();
          
          setLocalStream(stream);
          localStreamRef.current = stream;
 
-         // Add screen tracks directly. Perfect Negotiation handles SDP renegotiation automatically.
          Object.keys(peersRef.current).forEach((socketId) => {
              const pc = peersRef.current[socketId];
              stream.getTracks().forEach(track => {
@@ -422,6 +425,11 @@ export default function Room({ user }) {
          });
      } catch (err) {
          console.error('Error sharing screen:', err);
+         if (err.name === 'NotAllowedError') {
+             alert('Screen sharing failed. Your browser denied permission.\\n\\nIf you are on Mac, please check System Settings -> Privacy & Security -> Screen Recording and allow your browser.');
+         } else {
+             alert(`Could not grab screen: ${err.message}`);
+         }
      }
   };
 
