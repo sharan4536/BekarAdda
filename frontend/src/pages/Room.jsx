@@ -295,6 +295,12 @@ export default function Room({ user }) {
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
             socket.emit('answer', { to: from, answer: pc.localDescription });
+            
+            // Re-apply queued ICE candidates
+            if(pc._iceQueue && pc._iceQueue.length > 0) {
+                pc._iceQueue.forEach(c => pc.addIceCandidate(c).catch(e=>console.error("ICE Queue Add Error:", e)));
+                pc._iceQueue = [];
+            }
         } catch(e) { console.error("Offer Error:", e); }
     });
 
@@ -304,6 +310,12 @@ export default function Room({ user }) {
         if(!pc) return;
         try {
             await pc.setRemoteDescription(new RTCSessionDescription(answer));
+            
+            // Re-apply queued ICE candidates
+            if(pc._iceQueue && pc._iceQueue.length > 0) {
+                pc._iceQueue.forEach(c => pc.addIceCandidate(c).catch(e=>console.error("ICE Queue Add Error:", e)));
+                pc._iceQueue = [];
+            }
         } catch(e) { console.error("Answer Error:", e); }
     });
 
@@ -312,9 +324,14 @@ export default function Room({ user }) {
         if(!pc) pc = createPeer(from);
         
         try {
-            // Modern browsers natively queue ICE candidates; ignoreError avoids crash on early timing
-            pc._ignoreOffer || await pc.addIceCandidate(new RTCIceCandidate(candidate));
-        } catch(e) { console.log("ICE implicitly queued via modern WebRTC engine."); }
+            const iceCand = new RTCIceCandidate(candidate);
+            if (pc.remoteDescription && pc.remoteDescription.type) {
+                await pc.addIceCandidate(iceCand);
+            } else {
+                if (!pc._iceQueue) pc._iceQueue = [];
+                pc._iceQueue.push(iceCand);
+            }
+        } catch(e) { console.error("ICE Candidate Injection Failed:", e); }
     });
 
     return () => {
