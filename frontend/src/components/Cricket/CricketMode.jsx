@@ -395,22 +395,22 @@ export default function CricketMode({ socket, roomId, user, roomData }) {
             <div className="flex flex-col items-center justify-end pointer-events-auto mt-auto gap-4">
                 {/* ACTIVE PREDICTION UI */}
                 {predictionWindow && !myPrediction && (
-                    <div className="bg-slate-900/95 backdrop-blur-xl border-t-2 border-indigo-500 p-4 rounded-2xl shadow-2xl text-center max-w-sm w-full animate-in slide-in-from-bottom-4 fade-in duration-300">
+                    <div className="bg-slate-900/95 backdrop-blur-xl border-t-2 border-indigo-500 p-3 rounded-2xl shadow-2xl text-center max-w-xs w-full animate-in slide-in-from-bottom-4 fade-in duration-300">
 
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-black">{isLocked ? "Host Deciding..." : "Predict Next Ball!"}</h3>
-                            <div className="flex items-center gap-1.5 text-indigo-300 font-mono font-bold bg-indigo-950/50 py-1.5 px-3 rounded-full border border-indigo-500/20 text-xs shadow-inner">
-                                {isLocked ? <Flame size={14} className="text-amber-500 animate-pulse" /> : <Clock size={14} />}
+                        <div className="flex justify-between items-center mb-2">
+                            <h3 className="text-sm font-black">{isLocked ? "Host Deciding..." : "Predict Next Ball!"}</h3>
+                            <div className="flex items-center gap-1.5 text-indigo-300 font-mono font-bold bg-indigo-950/50 py-1 px-2 rounded-full border border-indigo-500/20 text-[10px] shadow-inner">
+                                {isLocked ? <Flame size={12} className="text-amber-500 animate-pulse" /> : <Clock size={12} />}
                                 {isLocked ? 'LOCKED' : `00:${timeLeft.toString().padStart(2, '0')}`}
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-6 gap-2 mb-3">
+                        <div className="grid grid-cols-6 gap-1.5 mb-2">
                             {[0, 1, 2, 3, 4, 6].map(runs => (
                                 <button
                                     key={runs}
                                     onClick={() => submitPrediction(runs, false)}
-                                    className="bg-slate-800 hover:bg-indigo-600 border border-white/5 py-3 rounded-xl font-black text-sm transition-all hover:scale-105 active:scale-95 shadow-md shadow-black/50"
+                                    className="bg-slate-800 hover:bg-indigo-600 border border-white/5 py-2.5 rounded-lg font-black text-xs transition-all hover:scale-105 active:scale-95 shadow-md shadow-black/50"
                                 >
                                     {runs}
                                 </button>
@@ -418,7 +418,7 @@ export default function CricketMode({ socket, roomId, user, roomData }) {
                         </div>
                         <button
                             onClick={() => submitPrediction(null, true)}
-                            className="w-full bg-red-950/40 text-red-400 border border-red-500/30 hover:bg-red-600 hover:text-white py-2 rounded-xl font-black text-sm transition-all uppercase tracking-widest active:scale-95"
+                            className="w-full bg-red-950/40 text-red-400 border border-red-500/30 hover:bg-red-600 hover:text-white py-1.5 rounded-lg font-black text-xs transition-all uppercase tracking-widest active:scale-95"
                         >
                             Wicket
                         </button>
@@ -427,11 +427,11 @@ export default function CricketMode({ socket, roomId, user, roomData }) {
 
                 {/* PREDICTION LOCKED IN */}
                 {myPrediction && predictionWindow && (
-                    <div className="bg-emerald-950/90 backdrop-blur-xl border border-emerald-500/30 px-8 py-5 rounded-full shadow-2xl flex items-center gap-4 animate-in fade-in zoom-in duration-300">
-                        <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
-                            <Check size={20} />
+                    <div className="bg-emerald-950/90 backdrop-blur-xl border border-emerald-500/30 px-5 py-2.5 rounded-full shadow-2xl flex items-center gap-2 animate-in fade-in zoom-in duration-300">
+                        <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                            <Check size={14} />
                         </div>
-                        <span className="font-medium text-emerald-100 text-lg">Prediction locked in: <strong className="text-white text-xl ml-1">{myPrediction}</strong></span>
+                        <span className="font-medium text-emerald-100 text-sm">Locked: <strong className="text-white text-sm ml-1">{myPrediction}</strong></span>
                     </div>
                 )}
 
