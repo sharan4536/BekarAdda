@@ -24,6 +24,7 @@ export default function CricketMode({ socket, roomId, user, roomData }) {
     const [language, setLanguage] = useState('General');
     const [showMenu, setShowMenu] = useState(false);
     const audioRefs = useRef({});
+    const memeVolumeRef = useRef(roomData?.settings?.memeVolume ?? 0.5);
 
     const fetchAssets = async () => {
         try {
@@ -140,7 +141,7 @@ export default function CricketMode({ socket, roomId, user, roomData }) {
         socket.on('play_meme', (memeData) => {
             try {
                 const audio = new Audio(memeData.url);
-                audio.volume = roomData?.settings?.memeVolume ?? 0.5;
+                audio.volume = memeVolumeRef.current;
                 audio.play().catch(e => console.log('Audio autoplay blocked', e));
             } catch (e) { }
         });
@@ -154,9 +155,15 @@ export default function CricketMode({ socket, roomId, user, roomData }) {
             socket.off('movie_reaction');
             socket.off('play_sound');
             socket.off('play_meme');
-
         };
     }, [socket, user.id]);
+
+    useEffect(() => {
+        memeVolumeRef.current = roomData?.settings?.memeVolume ?? 0.5;
+        Object.values(audioRefs.current).forEach(audio => {
+            if(audio) audio.volume = memeVolumeRef.current;
+        });
+    }, [roomData?.settings?.memeVolume]);
 
     useEffect(() => {
         if (timeLeft > 0 && !isLocked) {

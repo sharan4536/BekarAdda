@@ -260,7 +260,7 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('chat_message', { user, message, image, replyTo, effect });
   });
 
-  socket.on('host_action', ({ roomId, action, targetSocketId }) => {
+  socket.on('host_action', ({ roomId, action, targetSocketId, payload }) => {
       const room = rooms[roomId];
       if (room && room.host === socket.id) {
           if (action === 'mute') {
