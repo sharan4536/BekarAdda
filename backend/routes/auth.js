@@ -89,12 +89,11 @@ router.get('/me', auth, async (req, res) => {
 // @route   POST /api/auth/forgot-password
 router.post('/forgot-password', async (req, res) => {
     try {
-        const { email } = req.body;
-        const user = await User.findOne({ email });
+        const { username } = req.body;
+        const user = await User.findOne({ username });
         
         if (!user) {
-            // We return 200 anyway to prevent email enumeration attacks
-            return res.status(200).json({ message: 'If an account exists, a reset link was generated.' });
+            return res.status(404).json({ error: 'Username not found in our database.' });
         }
 
         const resetToken = crypto.randomBytes(20).toString('hex');
@@ -103,10 +102,9 @@ router.post('/forgot-password', async (req, res) => {
         
         await user.save();
 
-        // Normally, send via email. Here, we return it to the frontend purely for simulation testing.
         res.status(200).json({ 
-            message: 'If an account exists, a reset link was generated.',
-            _devLink: `${resetToken}` // Explicitly exposed for UI emulation since SMTP is undefined.
+            message: 'User verified.',
+            _devLink: `${resetToken}`
         });
     } catch (err) {
         console.error(err);

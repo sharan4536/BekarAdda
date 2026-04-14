@@ -6,7 +6,7 @@ export default function AuthPage({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [resetTokenFlow, setResetTokenFlow] = useState(null); // stores devToken manually for demo
-  const [formData, setFormData] = useState({ username: '', password: '', email: '', avatarUrl: '', token: '', newPassword: '' });
+  const [formData, setFormData] = useState({ username: '', password: '', email: '', avatarUrl: '', token: '', newPassword: '', resetUsername: '' });
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   
@@ -41,12 +41,12 @@ export default function AuthPage({ onLogin }) {
                 const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: formData.email })
+                    body: JSON.stringify({ username: formData.resetUsername })
                 });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Request failed');
                 
-                setSuccess(`[Simulated Email Sent] Use Token: ${data._devLink || 'Check Network Tab'}`);
+                setSuccess(`User Verified! Enter your new password below.`);
                 setResetTokenFlow(data._devLink || 'devLinkPlaceholder');
                 setFormData({ ...formData, token: data._devLink });
             } catch (err) {
@@ -138,26 +138,25 @@ export default function AuthPage({ onLogin }) {
                   
                   {!resetTokenFlow ? (
                       <div>
-                        <label className="block text-xs font-bold tracking-wider uppercase text-slate-400 mb-1">Your Registered Email</label>
+                        <label className="block text-xs font-bold tracking-wider uppercase text-slate-400 mb-1">Your Registered Username</label>
                         <input 
-                          type="email" 
-                          value={formData.email}
-                          onChange={(e) => setFormData({...formData, email: e.target.value})}
+                          type="text" 
+                          value={formData.resetUsername}
+                          onChange={(e) => setFormData({...formData, resetUsername: e.target.value})}
                           className="w-full px-4 py-2.5 rounded-lg bg-black/50 border border-white/10 outline-none focus:border-indigo-500 transition-all placeholder:text-slate-600"
-                          placeholder="name@domain.com"
+                          placeholder="e.g. Maverick"
                           required
                         />
                       </div>
                   ) : (
                       <>
-                        <div>
+                        <div className="hidden">
                           <label className="block text-xs font-bold tracking-wider uppercase text-slate-400 mb-1">Received Token</label>
                           <input 
                             type="text" 
                             value={formData.token}
                             onChange={(e) => setFormData({...formData, token: e.target.value})}
                             className="w-full px-4 py-2.5 rounded-lg border-emerald-500/50 bg-black/50 border outline-none focus:border-emerald-500 transition-all text-xs text-emerald-400 font-mono"
-                            required
                           />
                         </div>
                         <div>
