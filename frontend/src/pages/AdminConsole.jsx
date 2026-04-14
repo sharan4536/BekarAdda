@@ -18,7 +18,7 @@ export default function AdminConsole() {
   const [targetUsers, setTargetUsers] = useState([]);
   
   // Form States
-  const [formData, setFormData] = useState({ title: '', url: '', category: 'General', type: 'emoji' });
+  const [formData, setFormData] = useState({ title: '', url: '', category: 'General', language: 'Global', type: 'emoji' });
   const [isEditing, setIsEditing] = useState(null);
   const navigate = useNavigate();
 
@@ -65,7 +65,7 @@ export default function AdminConsole() {
   useEffect(() => {
      if (activeTab === 'dashboard') fetchStats();
      else if (['emoji', 'gif', 'sound'].includes(activeTab)) {
-         setFormData(prev => ({...prev, type: activeTab, url: '', title: ''}));
+         setFormData(prev => ({...prev, type: activeTab, url: '', title: '', language: 'Global'}));
          fetchAssets(activeTab);
      }
      else if (activeTab === 'chat') fetchConfig();
@@ -113,7 +113,7 @@ export default function AdminConsole() {
               body: JSON.stringify({ ...formData, url: targetUrl })
           });
           
-          setFormData({ title: '', url: '', category: 'General', type: activeTab });
+          setFormData({ title: '', url: '', category: 'General', language: 'Global', type: activeTab });
           setIsEditing(null);
           fetchAssets(activeTab);
       } catch (e) {
@@ -365,6 +365,16 @@ export default function AdminConsole() {
                                     <label className="text-xs font-bold tracking-widest text-slate-400 uppercase mb-2 block">Category Filter</label>
                                     <input type="text" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-indigo-500 outline-none" />
                                 </div>
+                                <div>
+                                    <label className="text-xs font-bold tracking-widest text-slate-400 uppercase mb-2 block">Language Mapping</label>
+                                    <select value={formData.language} onChange={e => setFormData({...formData, language: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm focus:border-indigo-500 outline-none appearance-none text-white">
+                                        <option value="Global">Global 🌍</option>
+                                        <option value="English">English</option>
+                                        <option value="Hindi">Hindi</option>
+                                        <option value="Telugu">Telugu</option>
+                                        <option value="Tamil">Tamil</option>
+                                    </select>
+                                </div>
                                 
                                 <div className="pt-4 flex gap-3">
                                     <button type="submit" className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(79,70,229,0.3)]">
@@ -393,11 +403,14 @@ export default function AdminConsole() {
                                         
                                         <div className="flex-1 min-w-0">
                                             <h4 className="font-bold text-slate-200 truncate">{asset.title}</h4>
-                                            <p className="text-xs text-slate-500 uppercase tracking-widest">{asset.category}</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-white/10 text-slate-300">{asset.language || 'Global'}</span>
+                                                <p className="text-[10px] text-slate-500 uppercase tracking-widest">{asset.category}</p>
+                                            </div>
                                         </div>
 
                                         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition">
-                                            <button onClick={() => { setIsEditing(asset._id); setFormData({ title: asset.title, url: asset.url, category: asset.category, type: asset.type }); }} className="p-2 bg-slate-800 hover:bg-indigo-500/20 text-slate-400 hover:text-indigo-400 rounded-lg transition">
+                                            <button onClick={() => { setIsEditing(asset._id); setFormData({ title: asset.title, url: asset.url, category: asset.category, language: asset.language || 'Global', type: asset.type }); }} className="p-2 bg-slate-800 hover:bg-indigo-500/20 text-slate-400 hover:text-indigo-400 rounded-lg transition">
                                                 <Edit size={16} />
                                             </button>
                                             <button onClick={() => handleDeleteAsset(asset._id)} className="p-2 bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-lg transition">

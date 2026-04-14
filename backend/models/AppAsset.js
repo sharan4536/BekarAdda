@@ -5,6 +5,7 @@ const AppAssetSchema = new mongoose.Schema({
   title: { type: String, required: true },
   url: { type: String, required: true }, // The external URL, or in the case of emoji, the raw character
   category: { type: String, default: 'General' },
+  language: { type: String, default: 'Global' },
   tags: [String],
   isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now }

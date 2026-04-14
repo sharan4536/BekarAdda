@@ -44,7 +44,7 @@ export default function App() {
              });
              if (res.ok) {
                  const data = await res.json();
-                 setUser({ id: data._id, username: data.username, avatarUrl: data.avatarUrl });
+                 setUser({ id: data._id, username: data.username, avatarUrl: data.avatarUrl, preferredLanguage: data.preferredLanguage });
              } else {
                  localStorage.removeItem('token');
              }

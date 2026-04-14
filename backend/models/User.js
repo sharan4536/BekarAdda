@@ -9,6 +9,8 @@ const UserSchema = new mongoose.Schema({
   totalPoints: { type: Number, default: 0 },
   currentStreak: { type: Number, default: 0 },
   bestStreak: { type: Number, default: 0 },
+  preferredLanguage: { type: String, enum: ['English', 'Telugu', 'Hindi', 'Tamil'], default: 'English' },
+  userType: { type: String, enum: ['free', 'premium'], default: 'free' },
   resetPasswordToken: { type: String },
   resetPasswordExpires: { type: Date }
 });

@@ -21,7 +21,8 @@ router.post('/register', async (req, res) => {
         user = new User({
             username,
             password: hashedPassword,
-            email: email || `${username}@bekaradda.local`
+            email: email || `${username}@bekaradda.local`,
+            preferredLanguage: req.body.preferredLanguage || 'English'
         });
 
         await user.save();
@@ -29,7 +30,7 @@ router.post('/register', async (req, res) => {
         const payload = { user: { id: user.id, username: user.username } };
         jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' }, (err, token) => {
             if (err) throw err;
-            res.status(201).json({ token, user: { id: user.id, username: user.username, avatarUrl: user.avatarUrl } });
+            res.status(201).json({ token, user: { id: user.id, username: user.username, avatarUrl: user.avatarUrl, preferredLanguage: user.preferredLanguage } });
         });
 
     } catch (err) {
@@ -52,7 +53,7 @@ router.post('/login', async (req, res) => {
         const payload = { user: { id: user.id, username: user.username } };
         jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' }, (err, token) => {
             if (err) throw err;
-            res.json({ token, user: { id: user.id, username: user.username, avatarUrl: user.avatarUrl } });
+            res.json({ token, user: { id: user.id, username: user.username, avatarUrl: user.avatarUrl, preferredLanguage: user.preferredLanguage } });
         });
 
     } catch (err) {
@@ -79,6 +80,26 @@ const auth = (req, res, next) => {
 router.get('/me', auth, async (req, res) => {
     try {
         const user = await User.findById(req.user.id).select('-password');
+        res.json(user);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
+// @route   PUT /api/auth/profile
+router.put('/profile', auth, async (req, res) => {
+    try {
+        const { username, preferredLanguage, avatarUrl } = req.body;
+        const user = await User.findById(req.user.id);
+        
+        if(!user) return res.status(404).json({ error: 'User not found' });
+
+        if(username) user.username = username;
+        if(preferredLanguage) user.preferredLanguage = preferredLanguage;
+        if(avatarUrl) user.avatarUrl = avatarUrl;
+
+        await user.save();
         res.json(user);
     } catch (err) {
         console.error(err.message);

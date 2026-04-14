@@ -16,10 +16,6 @@ export default function MovieMode({ socket, roomId, user, roomData }) {
           const data = await res.json();
           setAssets(data);
           
-          // Set initial category safely if available
-          const firstCat = data.find(d => d.type === 'emoji' || d.type === 'gif')?.category;
-          if (firstCat && language === 'General') setLanguage(firstCat);
-          
       } catch(e) {
           console.error("Asset Load Failed", e);
       }
@@ -31,11 +27,41 @@ export default function MovieMode({ socket, roomId, user, roomData }) {
      return () => socket.off('contentUpdated', fetchAssets);
   }, [socket]);
 
+  // Semantic Localization Engine
+  const localizedAssets = useMemo(() => {
+     const map = new Map();
+     assets.forEach(a => {
+         const key = `${a.type}_${a.title}`;
+         if (!map.has(key)) map.set(key, []);
+         map.get(key).push(a);
+     });
+     
+     const prefLang = user?.preferredLanguage || 'English';
+     const finalAssets = [];
+     
+     map.forEach(candidates => {
+         const match = candidates.find(a => a.language === prefLang) 
+                       || candidates.find(a => a.language === 'English') 
+                       || candidates.find(a => a.language === 'Global') 
+                       || candidates[0];
+         finalAssets.push(match);
+     });
+     return finalAssets;
+  }, [assets, user?.preferredLanguage]);
+
+  const localizedAssetsRef = useRef(localizedAssets);
+  useEffect(() => {
+      localizedAssetsRef.current = localizedAssets;
+      // Initialize category dropdown safely based on localized slice
+      const firstCat = localizedAssets.find(d => d.type === 'emoji' || d.type === 'gif')?.category;
+      if (firstCat && language === 'General') setLanguage(firstCat);
+  }, [localizedAssets]);
+
   // Derived Categorized Maps
-  const soundAssets = useMemo(() => assets.filter(a => a.type === 'sound'), [assets]);
+  const soundAssets = useMemo(() => localizedAssets.filter(a => a.type === 'sound'), [localizedAssets]);
   
   const reactionAssets = useMemo(() => {
-      const items = assets.filter(a => a.type === 'emoji' || a.type === 'gif');
+      const items = localizedAssets.filter(a => a.type === 'emoji' || a.type === 'gif');
       const grouped = {};
       items.forEach(item => {
           if (!grouped[item.category]) grouped[item.category] = [];
@@ -47,23 +73,38 @@ export default function MovieMode({ socket, roomId, user, roomData }) {
           });
       });
       return grouped;
-  }, [assets]);
+  }, [localizedAssets]);
   
   // Audio Map to prevent redundant creations
   const audioRefs = useRef({});
 
   useEffect(() => {
     // Pre-load audio mapped dynamically whenever assets array changes
-    soundAssets.forEach(s => {
+    // Must pre-load ALL assets across all languages to ensure immediate playback of semantic fallback hits without network delay
+    assets.filter(a => a.type === 'sound').forEach(s => {
         if (!audioRefs.current[s._id]) {
             audioRefs.current[s._id] = new Audio(s.url);
         }
         audioRefs.current[s._id].volume = roomData?.settings?.memeVolume ?? 0.5;
     });
-  }, [soundAssets, roomData?.settings?.memeVolume]);
+  }, [assets, roomData?.settings?.memeVolume]);
 
   useEffect(() => {
-    const handleReaction = ({ user: reactionUser, emoji, image }) => {
+    const handleReaction = (payload) => {
+        const { semanticTitle, senderFallback, user: reactionUser } = payload;
+        
+        let emoji = senderFallback?.emoji;
+        let image = senderFallback?.image;
+        
+        // Semantic Routing: Override with our own user's localized payload if valid
+        if(semanticTitle) {
+            const localMatch = localizedAssetsRef.current.find(a => a.title === semanticTitle && (a.type === 'emoji' || a.type === 'gif'));
+            if (localMatch) {
+                if (localMatch.type === 'emoji') { emoji = localMatch.url; image = null; }
+                else if (localMatch.type === 'gif') { image = localMatch.url; emoji = null; }
+            }
+        }
+
         const newBurst = {
             id: Math.random().toString(),
             emoji,
@@ -78,11 +119,19 @@ export default function MovieMode({ socket, roomId, user, roomData }) {
         }, 3000); // 3 sec for GIFs to play out a bit
     };
 
-    const handlePlaySound = ({ user: soundUser, soundId }) => {
-        if(audioRefs.current[soundId]) {
+    const handlePlaySound = (payload) => {
+        const { semanticTitle, senderFallbackId } = payload;
+        let targetId = senderFallbackId;
+        
+        if (semanticTitle) {
+            const localMatch = localizedAssetsRef.current.find(a => a.title === semanticTitle && a.type === 'sound');
+            if (localMatch) targetId = localMatch._id;
+        }
+
+        if(audioRefs.current[targetId]) {
             // Reset and play
-            audioRefs.current[soundId].currentTime = 0;
-            audioRefs.current[soundId].play().catch(console.error);
+            audioRefs.current[targetId].currentTime = 0;
+            audioRefs.current[targetId].play().catch(console.error);
         }
     };
 
@@ -96,13 +145,24 @@ export default function MovieMode({ socket, roomId, user, roomData }) {
   }, [socket]);
 
   const sendReaction = (reaction) => {
-      socket.emit('movie_reaction', { roomId, user, reactionType: language, emoji: reaction.emoji, image: reaction.image, message: reaction.text });
+      socket.emit('movie_reaction', { 
+          roomId, 
+          user, 
+          semanticTitle: reaction.text,
+          senderFallback: { emoji: reaction.emoji, image: reaction.image },
+          message: reaction.text 
+      });
+      // Emitting to Chat using exactly what this sender triggered!
       socket.emit('chat_message', { roomId, user, message: reaction.text, effect: 'glow', image: reaction.image }); 
   };
 
   const emitSound = (sound) => {
-      socket.emit('play_sound', { roomId, user, soundId: sound._id });
-      // Notify chat
+      socket.emit('play_sound', { 
+          roomId, 
+          user, 
+          semanticTitle: sound.title,
+          senderFallbackId: sound._id
+      });
       socket.emit('chat_message', { roomId, user, message: `🎵 Played Sound: ${sound.title}` });
   };
 
