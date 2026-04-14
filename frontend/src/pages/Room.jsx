@@ -383,10 +383,14 @@ export default function Room({ user }) {
 
   const startScreenShare = async () => {
      try {
-         // EXTREMELY FORGIVING CONSTRAINT: Stripped audio completely.
-         // Mac CoreAudio loopback occasionally crashes and instantly rejects the stream with NotAllowedError.
-         // By strictly requesting video, we bypass the OS-level audio routing crash.
-         const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+         const stream = await navigator.mediaDevices.getDisplayMedia({ 
+             video: true,
+             audio: {
+                 echoCancellation: false,
+                 noiseSuppression: false,
+                 autoGainControl: false
+             }
+         });
          
          stream.getVideoTracks()[0].onended = () => stopScreenShare();
          
