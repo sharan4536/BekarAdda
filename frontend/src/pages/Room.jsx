@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
-import { Share2, Users, MessageSquare, Mic, MicOff, LogOut, MonitorOff, MonitorUp, UserMinus, X } from 'lucide-react';
+import { Share2, Users, MessageSquare, Mic, MicOff, LogOut, MonitorOff, MonitorUp, UserMinus, X, Volume2 } from 'lucide-react';
 import CricketMode from '../components/Cricket/CricketMode';
 import MovieMode from '../components/Movie/MovieMode';
 
@@ -543,14 +543,28 @@ export default function Room({ user }) {
                  </button>
                  
                  {isHost && (
-                     <button 
-                         onClick={localStream ? stopScreenShare : startScreenShare}
-                         title={localStream ? "Stop screen sharing" : "Share screen"}
-                         className={`p-2 rounded-xl transition-all border border-white/10 flex items-center gap-2 ${localStream ? 'bg-indigo-500/80 text-white shadow-[0_0_15px_rgba(79,70,229,0.5)]' : 'bg-slate-800/80 hover:bg-slate-700 text-indigo-400'}`}
-                     >
-                         {localStream ? <MonitorOff size={16} /> : <MonitorUp size={16} />}
-                         <span className="text-xs font-bold hidden xl:inline tracking-wide">Display</span>
-                     </button>
+                     <>
+                         <button 
+                             onClick={localStream ? stopScreenShare : startScreenShare}
+                             title={localStream ? "Stop screen sharing" : "Share screen"}
+                             className={`p-2 rounded-xl transition-all border border-white/10 flex items-center gap-2 ${localStream ? 'bg-indigo-500/80 text-white shadow-[0_0_15px_rgba(79,70,229,0.5)]' : 'bg-slate-800/80 hover:bg-slate-700 text-indigo-400'}`}
+                         >
+                             {localStream ? <MonitorOff size={16} /> : <MonitorUp size={16} />}
+                             <span className="text-xs font-bold hidden xl:inline tracking-wide">Display</span>
+                         </button>
+
+                         <div className="hidden lg:flex items-center gap-2 border border-white/10 rounded-lg px-2 py-1.5 bg-slate-800/80 shadow-inner group">
+                             <Volume2 size={14} className="text-slate-400 group-hover:text-indigo-400 transition" />
+                             <input 
+                                 type="range" 
+                                 min="0" max="1" step="0.1" 
+                                 value={roomData?.settings?.memeVolume ?? 0.5} 
+                                 onChange={(e) => socket.emit('host_action', { roomId, action: 'update_volume', payload: parseFloat(e.target.value) })}
+                                 className="w-16 h-1 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-indigo-500" 
+                                 title="Global Room Sound Volume"
+                             />
+                         </div>
+                     </>
                  )}
                  
                  <button 
@@ -640,7 +654,7 @@ export default function Room({ user }) {
 
                {/* MOVIE MODE EFFECTS: Emoji Bursts overlay */}
                {roomData.mode === 'movie' && (
-                 <MovieMode socket={socket} roomId={roomId} user={user} />
+                 <MovieMode socket={socket} roomId={roomId} user={user} roomData={roomData} />
                )}
            </div>
 

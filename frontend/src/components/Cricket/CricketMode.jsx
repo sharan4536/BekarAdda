@@ -3,10 +3,10 @@ import { Trophy, Clock, X, Check, PlayCircle, Flame, Target, MessageSquareCode, 
 import confetti from 'canvas-confetti';
 
 const MEMES = [
-  { id: 1, label: 'Airhorn', emoji: '🎺', url: 'https://www.myinstants.com/media/sounds/mlg-airhorn.mp3' },
-  { id: 2, label: 'Sad Trombone', emoji: '📉', url: 'https://www.myinstants.com/media/sounds/sad-trombone.mp3' },
-  { id: 3, label: 'Bruh', emoji: '😂', url: 'https://www.myinstants.com/media/sounds/movie_1.mp3' },
-  { id: 4, label: 'Applause', emoji: '👏', url: 'https://www.myinstants.com/media/sounds/golfclap.mp3' }
+    { id: 1, label: 'Airhorn', emoji: '🎺', url: 'https://www.myinstants.com/media/sounds/better-ipl-horn.mp3' },
+    { id: 2, label: 'Sad Trombone', emoji: '📉', url: 'https://www.myinstants.com/media/sounds/sad-trombone.mp3' },
+    { id: 3, label: 'Bruh', emoji: '😂', url: 'https://www.myinstants.com/media/sounds/movie_1.mp3' },
+    { id: 4, label: 'Applause', emoji: '👏', url: 'https://www.myinstants.com/media/sounds/golfclap.mp3' }
 ];
 
 export default function CricketMode({ socket, roomId, user, roomData }) {
@@ -73,7 +73,7 @@ export default function CricketMode({ socket, roomId, user, roomData }) {
                 }
 
                 audioRefs.current[s._id] = new Audio(finalUrl);
-                audioRefs.current[s._id].volume = 0.36;
+                audioRefs.current[s._id].volume = roomData?.settings?.memeVolume ?? 0.5;
                 audioRefs.current[s._id].preload = "auto";
             }
         });
@@ -140,7 +140,7 @@ export default function CricketMode({ socket, roomId, user, roomData }) {
         socket.on('play_meme', (memeData) => {
             try {
                 const audio = new Audio(memeData.url);
-                audio.volume = 0.24;
+                audio.volume = roomData?.settings?.memeVolume ?? 0.5;
                 audio.play().catch(e => console.log('Audio autoplay blocked', e));
             } catch (e) { }
         });
@@ -313,7 +313,7 @@ export default function CricketMode({ socket, roomId, user, roomData }) {
             {/* TOP LEVEL: Score & Leaderboard */}
             <div className="flex justify-between items-start pointer-events-auto">
                 <div className="flex flex-col gap-4">
-                    
+
                     {/* Leaderboard Manually Trigger Icon overlaying correctly near User Panel */}
                     <button onClick={() => setShowLeaderboard(!showLeaderboard)} className="w-10 h-10 bg-slate-900/80 backdrop-blur border border-amber-500/30 rounded-xl flex items-center justify-center text-amber-500 hover:scale-110 transition shadow-[0_0_15px_rgba(245,158,11,0.2)]" title="Toggle Leaderboard">
                         <Trophy size={18} />
@@ -367,7 +367,7 @@ export default function CricketMode({ socket, roomId, user, roomData }) {
                             <h3 className="font-bold text-xs uppercase tracking-widest text-slate-400 flex items-center gap-2">
                                 <Trophy size={14} className="text-amber-400" /> Leaderboard
                             </h3>
-                            <button onClick={() => setShowLeaderboard(false)} className="text-slate-500 hover:text-white"><X size={14}/></button>
+                            <button onClick={() => setShowLeaderboard(false)} className="text-slate-500 hover:text-white"><X size={14} /></button>
                         </div>
                         <div className="space-y-2">
                             {leaderboard.map((lb, i) => (

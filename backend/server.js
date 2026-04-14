@@ -194,7 +194,8 @@ io.on('connection', (socket) => {
         host: socket.id,
         cricketState: { currentRoundId: null, predictions: {}, windowStart: 0, phase: 'idle' },
         leaderboard: {},
-        dares: []
+        dares: [],
+        settings: { memeVolume: 0.5 }
       };
     }
     
@@ -272,6 +273,9 @@ io.on('connection', (socket) => {
               
               io.to(roomId).emit('room_update', room);
               io.to(roomId).emit('user_left', { socketId: targetSocketId });
+          } else if (action === 'update_volume') {
+              room.settings.memeVolume = payload;
+              io.to(roomId).emit('room_update', room);
           }
       }
   });

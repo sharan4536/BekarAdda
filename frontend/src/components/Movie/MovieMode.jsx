@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Settings2, Zap, Music, Smile } from 'lucide-react';
 
-export default function MovieMode({ socket, roomId, user }) {
+export default function MovieMode({ socket, roomId, user, roomData }) {
   const [activeTab, setActiveTab] = useState('reactions'); // 'reactions' or 'sounds'
   
   // Dynamic Assets from Backend
@@ -57,10 +57,10 @@ export default function MovieMode({ socket, roomId, user }) {
     soundAssets.forEach(s => {
         if (!audioRefs.current[s._id]) {
             audioRefs.current[s._id] = new Audio(s.url);
-            audioRefs.current[s._id].volume = 0.6;
         }
+        audioRefs.current[s._id].volume = roomData?.settings?.memeVolume ?? 0.5;
     });
-  }, [soundAssets]);
+  }, [soundAssets, roomData?.settings?.memeVolume]);
 
   useEffect(() => {
     const handleReaction = ({ user: reactionUser, emoji, image }) => {
