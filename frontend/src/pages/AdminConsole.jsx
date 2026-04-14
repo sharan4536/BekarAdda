@@ -8,6 +8,7 @@ export default function AdminConsole() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [stats, setStats] = useState({ assets: {}, live: {} });
+  const [roomLogs, setRoomLogs] = useState([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -26,6 +27,9 @@ export default function AdminConsole() {
           const res = await fetch(`${API_BASE}/stats`);
           const data = await res.json();
           setStats(data);
+          
+          const logsRes = await fetch(`${API_BASE}/room-logs`);
+          setRoomLogs(await logsRes.json());
       } catch (e) {
           console.error(e);
       }
@@ -279,6 +283,55 @@ export default function AdminConsole() {
                             <div className="p-4 bg-black/40 rounded-xl border border-white/5 font-mono text-sm text-emerald-400">
                                 [SYS_OK] BekarAdda Socket Layer Active.<br/>
                                 [SYS_OK] Admin Control Plane Listening on Port 5001.
+                            </div>
+                        </div>
+
+                        {/* ROOM AUDIT LOGS DISPLAY */}
+                        <div className="bg-slate-900 border border-white/5 rounded-3xl overflow-hidden mt-8 shadow-xl">
+                            <div className="p-6 border-b border-white/5">
+                                <h3 className="text-lg font-bold tracking-wide">Historical Room Logs</h3>
+                                <p className="text-sm text-slate-400 mt-1">Timeline of previously active network rooms.</p>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-black/40 text-slate-400 text-xs font-bold uppercase tracking-widest border-b border-white/5">
+                                            <th className="p-4 pl-6">Room ID</th>
+                                            <th className="p-4">Mode</th>
+                                            <th className="p-4">Host</th>
+                                            <th className="p-4">Peak Users</th>
+                                            <th className="p-4">Started At</th>
+                                            <th className="p-4">Duration</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-white/5">
+                                        {roomLogs.map(log => {
+                                            const start = new Date(log.startedAt);
+                                            const end = log.endedAt ? new Date(log.endedAt) : null;
+                                            let duration = "Active...";
+                                            if (end) {
+                                                const diffMn = Math.round((end - start) / 60000);
+                                                duration = diffMn < 1 ? '< 1 min' : `${diffMn} min`;
+                                            }
+                                            
+                                            return (
+                                                <tr key={log._id} className="hover:bg-slate-800/50 transition">
+                                                    <td className="p-4 pl-6 font-mono text-xs text-cyan-400 break-all">{log.roomId}</td>
+                                                    <td className="p-4 text-xs font-bold uppercase tracking-wider text-slate-300">{log.mode}</td>
+                                                    <td className="p-4 font-bold text-slate-200">{log.hostId?.username || 'Unknown'}</td>
+                                                    <td className="p-4 text-sm font-bold text-indigo-400">{log.peakUsers}</td>
+                                                    <td className="p-4 text-xs text-slate-400">{start.toLocaleString()}</td>
+                                                    <td className="p-4 text-xs font-bold text-slate-400">
+                                                        {end ? duration : <span className="text-emerald-400 animate-pulse border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 rounded">LIVE</span>}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                        {roomLogs.length === 0 && (
+                                            <tr><td colSpan="6" className="p-8 text-center text-slate-500 italic">No room history recorded.</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>

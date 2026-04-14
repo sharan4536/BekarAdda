@@ -18,6 +18,7 @@ const MemeContent = require('./models/MemeContent');
 const AppAsset = require('./models/AppAsset');
 const AdminConfig = require('./models/AdminConfig');
 const Message = require('./models/Message');
+const RoomLog = require('./models/RoomLog');
 
 const app = express();
 app.use(cors());
@@ -188,6 +189,15 @@ app.get('/api/admin/users', async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
+
+app.get('/api/admin/room-logs', async (req, res) => {
+    try {
+        const logs = await RoomLog.find().populate('hostId', 'username').sort({ startedAt: -1 }).limit(100);
+        res.json(logs);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
 // ====================================================
 
 // Socket.io Handlers
@@ -206,6 +216,10 @@ io.on('connection', (socket) => {
         dares: [],
         settings: { memeVolume: 0.5 }
       };
+      
+      const newLog = new RoomLog({ roomId, mode, hostId: user.id });
+      await newLog.save().catch(e => console.error("RoomLog creation failed:", e));
+      rooms[roomId].logId = newLog._id;
     }
     
     // Keep track of socket's current active room internally
@@ -218,6 +232,15 @@ io.on('connection', (socket) => {
         socket.to(roomId).emit('user_joined', { socketId: socket.id, user });
     } else {
         existingUser.socketId = socket.id;
+    }
+
+    if (rooms[roomId].logId) {
+        RoomLog.findById(rooms[roomId].logId).then(log => {
+            if(log && rooms[roomId].users.length > log.peakUsers) {
+                log.peakUsers = rooms[roomId].users.length;
+                log.save().catch(()=>{});
+            }
+        }).catch(()=>{});
     }
 
     io.to(roomId).emit('room_update', rooms[roomId]);
@@ -423,6 +446,10 @@ io.on('connection', (socket) => {
        rooms[roomId].users = rooms[roomId].users.filter(u => u.socketId !== socket.id);
        io.to(roomId).emit('user_left', { socketId: socket.id });
        if (rooms[roomId].users.length === 0) {
+           const logIdToClose = rooms[roomId].logId;
+           if (logIdToClose) {
+               RoomLog.findByIdAndUpdate(logIdToClose, { endedAt: Date.now() }).exec().catch(()=>{});
+           }
            delete rooms[roomId];
        } else {
            if(rooms[roomId].host === socket.id) {
