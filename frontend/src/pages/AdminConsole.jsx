@@ -14,6 +14,7 @@ export default function AdminConsole() {
   
   const [assets, setAssets] = useState([]);
   const [config, setConfig] = useState(null);
+  const [targetUsers, setTargetUsers] = useState([]);
   
   // Form States
   const [formData, setFormData] = useState({ title: '', url: '', category: 'General', type: 'emoji' });
@@ -48,6 +49,15 @@ export default function AdminConsole() {
       }
   };
 
+  const fetchUsers = async () => {
+      try {
+          const res = await fetch(`${API_BASE}/users`);
+          setTargetUsers(await res.json());
+      } catch (e) {
+          console.error(e);
+      }
+  };
+
   useEffect(() => {
      if (activeTab === 'dashboard') fetchStats();
      else if (['emoji', 'gif', 'sound'].includes(activeTab)) {
@@ -55,6 +65,7 @@ export default function AdminConsole() {
          fetchAssets(activeTab);
      }
      else if (activeTab === 'chat') fetchConfig();
+     else if (activeTab === 'directory') fetchUsers();
   }, [activeTab]);
 
   const handleFileUpload = async (e) => {
@@ -137,6 +148,7 @@ export default function AdminConsole() {
 
   const NAV_ITEMS = [
       { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
+      { id: 'directory', label: 'User Directory', icon: <Users size={18} /> },
       { id: 'emoji', label: 'Emoji Manager', icon: <Smile size={18} /> },
       { id: 'gif', label: 'GIF Manager', icon: <FileVideo size={18} /> },
       { id: 'sound', label: 'Soundboard', icon: <Music size={18} /> },
@@ -374,6 +386,50 @@ export default function AdminConsole() {
                                         </button>
                                     </div>
                                 ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* USER DIRECTORY TAB */}
+                {activeTab === 'directory' && (
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="bg-slate-900 border border-white/5 rounded-3xl overflow-hidden shadow-xl">
+                            <div className="p-6 border-b border-white/5">
+                                <h3 className="text-xl font-bold tracking-wide">Registered Users Directory</h3>
+                                <p className="text-sm text-slate-400 mt-1">Complete list of all verified identity accounts active on the network.</p>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-black/40 text-slate-400 text-xs font-bold uppercase tracking-widest border-b border-white/5">
+                                            <th className="p-4 pl-6">Identifier (ID)</th>
+                                            <th className="p-4">Username</th>
+                                            <th className="p-4">Email Bound</th>
+                                            <th className="p-4">Date Joined</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-white/5">
+                                        {targetUsers.map(u => (
+                                            <tr key={u._id} className="hover:bg-slate-800/50 transition">
+                                                <td className="p-4 pl-6 font-mono text-xs text-indigo-400 break-all">{u._id}</td>
+                                                <td className="p-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 font-bold flex items-center justify-center shrink-0">
+                                                            {u.avatarUrl ? <img src={u.avatarUrl} className="w-full h-full object-cover rounded-lg" /> : u.username?.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <span className="font-bold text-slate-200">{u.username}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="p-4 font-medium text-sm text-slate-300">{u.email || <span className="opacity-40 italic">N/A</span>}</td>
+                                                <td className="p-4 text-xs font-bold text-slate-500">{new Date(u.createdAt).toLocaleDateString()}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                {targetUsers.length === 0 && (
+                                    <div className="p-8 text-center text-slate-500 italic">No users found.</div>
+                                )}
                             </div>
                         </div>
                     </div>

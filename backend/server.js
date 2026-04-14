@@ -179,6 +179,15 @@ app.post('/api/admin/config', async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
+
+app.get('/api/admin/users', async (req, res) => {
+    try {
+        const users = await User.find().select('-password').sort({ createdAt: -1 });
+        res.json(users);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
 // ====================================================
 
 // Socket.io Handlers
